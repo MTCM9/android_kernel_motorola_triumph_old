@@ -166,8 +166,6 @@ static void bi041p_isr_workqueue(struct work_struct *work) {
 //                    printk(KERN_INFO "[Touch] %s: Pen Down.\n", __func__);
             } else {        // First touch released
                 input_report_abs(bi041p.input, ABS_MT_TOUCH_MAJOR, 0);
-                input_report_abs(bi041p.input, ABS_MT_POSITION_X, XCORD1(buffer));
-                input_report_abs(bi041p.input, ABS_MT_POSITION_Y, TS_MAX_Y - YCORD1(buffer));
                 input_report_abs(bi041p.input, ABS_MT_PRESSURE, 0);
                 input_mt_sync(bi041p.input);
                 bIsPenUp = 1;
@@ -182,8 +180,6 @@ static void bi041p_isr_workqueue(struct work_struct *work) {
                 input_mt_sync(bi041p.input);
             } else {        // Second touch released
                 input_report_abs(bi041p.input, ABS_MT_TOUCH_MAJOR, 0);
-                input_report_abs(bi041p.input, ABS_MT_POSITION_X, XCORD2(buffer));
-                input_report_abs(bi041p.input, ABS_MT_POSITION_Y, TS_MAX_Y - YCORD2(buffer));
                 input_report_abs(bi041p.input, ABS_MT_PRESSURE, 0);
                 input_mt_sync(bi041p.input);
             }
