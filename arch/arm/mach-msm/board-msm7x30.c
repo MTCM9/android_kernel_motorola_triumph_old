@@ -174,7 +174,7 @@
 #ifdef CONFIG_VMSPLIT_2G
 #define MSM_GPU_PHYS_SIZE       0x200000
 #else
-#define MSM_GPU_PHYS_SIZE       SZ_2M
+#define MSM_GPU_PHYS_SIZE       SZ_4M
 #endif
 
 /* This cannot be changed or it kills 720p recording */
