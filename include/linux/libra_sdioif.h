@@ -38,7 +38,15 @@
 #include <linux/mmc/host.h>
 #include <linux/mmc/sdio_func.h>
 
+/*
+ * Common Defines
+ */
 #define LIBRA_MAN_ID              0x70
+#define LIBRA_REV_1_0_CARD_ID     0x0
+
+#define VOLANS_MAN_ID             0x70
+#define VOLANS_REV_1_0_CARD_ID    0x0
+#define VOLANS_REV_2_0_CARD_ID    0x2881
 
 typedef int (suspend_handler_t)(struct sdio_func *);
 typedef void (resume_handler_t)(struct sdio_func *);
@@ -78,5 +86,8 @@ void libra_sdio_set_clock(struct sdio_func *func, unsigned int clk_freq);
 void libra_sdio_get_card_id(struct sdio_func *func, unsigned short *card_id);
 void libra_sdio_release_irq(struct sdio_func *func);
 void libra_sdio_disable_func(struct sdio_func *func);
+
+void libra_sdio_set_clock(struct sdio_func *func, unsigned int clk_freq);
+void libra_sdio_get_card_id(struct sdio_func *func, unsigned short *card_id);
 
 #endif /* __LIBRA_SDIOIF_H__ */
