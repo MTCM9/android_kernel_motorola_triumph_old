@@ -1,7 +1,7 @@
 #
 # Automatically generated make config: don't edit
 # Linux kernel version: 2.6.32.9
-# Tue Feb 28 19:50:00 2012
+# Sun Mar 18 00:01:42 2012
 #
 CONFIG_ARM=y
 CONFIG_SYS_SUPPORTS_APM_EMULATION=y
@@ -913,6 +913,10 @@ CONFIG_WIRELESS_EXT=y
 #
 # CFG80211 needs to be enabled for MAC80211
 #
+
+#
+# Some wireless drivers require a rate control algorithm
+#
 # CONFIG_WIMAX is not set
 CONFIG_RFKILL=y
 # CONFIG_RFKILL_PM is not set
@@ -934,7 +938,8 @@ CONFIG_FW_LOADER=y
 CONFIG_FIRMWARE_IN_KERNEL=y
 CONFIG_EXTRA_FIRMWARE=""
 # CONFIG_SYS_HYPERVISOR is not set
-# CONFIG_GENLOCK is not set
+CONFIG_GENLOCK=y
+CONFIG_GENLOCK_MISCDEVICE=y
 # CONFIG_CONNECTOR is not set
 CONFIG_MTD=y
 # CONFIG_MTD_DEBUG is not set
