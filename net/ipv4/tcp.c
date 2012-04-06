@@ -2930,7 +2930,7 @@ void __init tcp_init(void)
 	}
 
 
-	cnt = tcp_hashinfo.ehash_size;
+	cnt = tcp_hashinfo.ehash_mask;
 
 	tcp_death_row.sysctl_max_tw_buckets = cnt / 2;
 	sysctl_tcp_max_orphans = cnt / 2;
