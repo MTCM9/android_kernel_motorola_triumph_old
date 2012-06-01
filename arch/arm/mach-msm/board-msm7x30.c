@@ -161,7 +161,6 @@
 /* FIHTDC, Div2-SW2-BSP SungSCLee, HDMI { */
 #define MSM_FB_SIZE		0xA00000       ///0x500000
 /* } FIHTDC, Div2-SW2-BSP SungSCLee, HDMI */
-#define MSM_GPU_PHYS_SIZE       SZ_4M
 #define MSM_PMEM_ADSP_SIZE      0x2000000  //SW2-5-CL-Camera-720P-00*
 #define MSM_FLUID_PMEM_ADSP_SIZE	0x2800000
 #define PMEM_KERNEL_EBI1_SIZE   0x600000
@@ -9547,13 +9546,6 @@ static void __init fb_size_setup(char **p)
 }
 __early_param("fb_size=", fb_size_setup);
 
-static unsigned gpu_phys_size = MSM_GPU_PHYS_SIZE;
-static void __init gpu_phys_size_setup(char **p)
-{
-	gpu_phys_size = memparse(*p, p);
-}
-__early_param("gpu_phys_size=", gpu_phys_size_setup);
-
 static unsigned pmem_adsp_size = MSM_PMEM_ADSP_SIZE;
 static void __init pmem_adsp_size_setup(char **p)
 {
@@ -9599,16 +9591,6 @@ static void __init msm7x30_allocate_memory_regions(void)
 	pr_info("allocating %lu bytes at %p (%lx physical) for fb\n",
 		size, addr, __pa(addr));
 	
-/*
-	size = gpu_phys_size;
-	if (size) {
-		addr = alloc_bootmem(size);
-		kgsl_resources[1].start = __pa(addr);
-		kgsl_resources[1].end = kgsl_resources[1].start + size - 1;
-		pr_info("allocating %lu bytes at %p (%lx physical) for "
-			"KGSL\n", size, addr, __pa(addr));
-	}
-*/
 	size = pmem_kernel_ebi1_size;
 	if (size) {
 		addr = alloc_bootmem_aligned(size, 0x100000);
