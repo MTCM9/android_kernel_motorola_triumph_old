@@ -1301,14 +1301,36 @@ struct strobe_flash_ctrl_data {
 	int charge_en;
 };
 
+struct fih_parameters_data {
+	uint32_t autoexposure;
+	uint32_t effects;
+	uint32_t wb;
+	uint32_t antibanding;
+	uint32_t flash;
+	uint32_t focus;
+	uint32_t ISO;
+	uint32_t lensshade;
+	uint32_t scenemode;
+	uint32_t continuous_af;
+	uint32_t touchafaec;
+	uint32_t frame_rate_modes;
+	int8_t  max_brightness;
+	int8_t  max_contrast;
+	int8_t  max_saturation;
+	int8_t  max_sharpness;
+	int8_t  min_brightness;
+	int8_t  min_contrast;
+	int8_t  min_saturation;
+	int8_t  min_sharpness;
+};
+
 struct msm_camera_info {
 	int num_cameras;
 	uint8_t has_3d_support[MSM_MAX_CAMERA_SENSORS];
+	uint32_t sensor_Orientation[MSM_MAX_CAMERA_SENSORS];
 	uint8_t is_internal_cam[MSM_MAX_CAMERA_SENSORS];
 	uint32_t s_mount_angle[MSM_MAX_CAMERA_SENSORS];
-	const char *video_dev_name[MSM_MAX_CAMERA_SENSORS];
-	enum sensor_type_t sensor_type[MSM_MAX_CAMERA_SENSORS];
-
+	struct fih_parameters_data parameters_data[MSM_MAX_CAMERA_SENSORS];
 };
 
 struct msm_cam_config_dev_info {
@@ -1341,8 +1363,28 @@ struct flash_ctrl_data {
 struct msm_camsensor_info {
 	char name[MAX_SENSOR_NAME];
 	uint8_t flash_enabled;
+	uint8_t sensor_Orientation;
 	int8_t total_steps;
-	uint8_t support_3d;
+	uint32_t autoexposure;
+	uint32_t effects;
+	uint32_t wb;
+	uint32_t antibanding;
+	uint32_t flash;
+	uint32_t focus;
+	uint32_t ISO;
+	uint32_t lensshade;
+	uint32_t scenemode;
+	uint32_t continuous_af;
+	uint32_t touchafaec;
+	uint32_t frame_rate_modes;
+	int8_t  max_brightness;
+	int8_t  max_contrast;
+	int8_t  max_saturation;
+	int8_t  max_sharpness;
+	int8_t  min_brightness;
+	int8_t  min_contrast;
+	int8_t  min_saturation;
+	int8_t  min_sharpness;
 };
 
 #define V4L2_SINGLE_PLANE	0
