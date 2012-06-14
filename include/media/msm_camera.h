@@ -1365,6 +1365,7 @@ struct msm_camsensor_info {
 	uint8_t flash_enabled;
 	uint8_t sensor_Orientation;
 	int8_t total_steps;
+    uint8_t support_3d;
 	uint32_t autoexposure;
 	uint32_t effects;
 	uint32_t wb;
