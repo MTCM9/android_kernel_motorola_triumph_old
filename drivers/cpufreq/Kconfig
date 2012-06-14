@@ -127,6 +127,12 @@ config CPU_FREQ_DEFAULT_GOV_SMARTASS
 	help
 		Use the CPUFreq Governor 'smartass' as default.
 
+config CPU_FREQ_DEFAULT_GOV_SMOOTHASS
+	bool "smoothass"
+	select CPU_FREQ_GOV_SMOOTHASS
+	help
+	  Use CPUFREQ smoothass as default.
+
 config CPU_FREQ_DEFAULT_GOV_SCARY
 	bool "scary"
 	select CPU_FREQ_GOV_SCARY
@@ -254,6 +260,12 @@ config CPU_FREQ_GOV_SMARTASS
 	depends on CPU_FREQ
 	help
 		'smartass' - a "smart" optimized governor
+
+config CPU_FREQ_GOV_SMOOTHASS
+	tristate "'smoothass' governor"
+	depends on CPU_FREQ
+	help
+	  Slightly more aggressive smartass
 
 config CPU_FREQ_GOV_SCARY
 	tristate "'scary' cpufreq governor"
