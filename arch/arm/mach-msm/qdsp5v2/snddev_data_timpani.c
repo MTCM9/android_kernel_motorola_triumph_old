@@ -898,7 +898,7 @@ static struct platform_device *snd_devices_ffa[] __initdata = {
 	&msm_snddev_mi2s_stereo_rx_device,
 };
 
-void __init msm_snddev_init_timpani(void)
+void __ref msm_snddev_init_timpani(void)
 {
 	platform_add_devices(snd_devices_ffa,
 			ARRAY_SIZE(snd_devices_ffa));
