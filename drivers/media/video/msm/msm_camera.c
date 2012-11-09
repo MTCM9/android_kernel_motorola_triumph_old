@@ -138,6 +138,22 @@ static const char *vfe_config_cmd[] = {
 	res;							\
 })
 
+static inline void dump_data(void *data, int len)
+{
+	int i;
+	uint8_t *buff = (uint8_t *)(data);
+
+	if (len <= 0) return;
+	printk("======= data dump at %6p =======\n", data);
+	for (i = 1; i < len+1; ++i)
+	{
+		printk("%02hhx ", buff[i-1]);
+		if (i % 32 == 0)
+			printk("\n");
+	}
+	printk("\n================================\n");
+}
+
 static inline void free_qcmd(struct msm_queue_cmd *qcmd)
 {
 	if (!qcmd || !atomic_read(&qcmd->on_heap))
@@ -1047,6 +1063,16 @@ static int msm_control(struct msm_control_device *ctrl_pmsm,
 
 	if (qcmd_resp->command) {
 		udata_resp = *(struct msm_ctrl_cmd *)qcmd_resp->command;
+
+		////////////////////////////////////////////////////////////////
+		printk("----------------------------------------------------\n");
+		printk("control message result (msm_control)\n");
+		printk("type: %hu, length: %hu\n", udata_resp.type, udata_resp.length);
+		dump_data(udata_resp.value, udata_resp.length);
+		printk("control message result end (msm_control)\n");
+		printk("----------------------------------------------------\n");
+		////////////////////////////////////////////////////////////////
+
 		if (udata_resp.length > 0) {
 			if (copy_to_user(uptr,
 					 udata_resp.value,
@@ -1507,6 +1533,8 @@ static int msm_get_stats(struct msm_sync *sync, void __user *arg)
 					buff[20] = 0x90;
 				if (buff[22] == 0 && buff[23] == 0)
 					buff[22] = 0xc0;
+				printk("Dimensions dump to be returned:\n");
+				dump_data(buff, ctrl->length);
 			}
 			if (copy_to_user((void *)(se.ctrl_cmd.value),
 						ctrl->value,
