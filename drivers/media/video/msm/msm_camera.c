@@ -1265,7 +1265,7 @@ static int msm_get_stats(struct msm_sync *sync, void __user *arg)
 	if (!qcmd) {
 		/* Should be associated with wait_event
 			error -512 from __msm_control*/
-		pr_err("%s, qcmd is Null\n", __func__);
+		//pr_err("%s, qcmd is Null\n", __func__);
 		rc = -ETIMEDOUT;
 		return rc;
 	}
