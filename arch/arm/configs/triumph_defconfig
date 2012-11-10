@@ -1659,7 +1659,7 @@ CONFIG_USB_PWC_INPUT_EVDEV=y
 # Qualcomm MSM Camera And Video
 #
 CONFIG_MSM_CAMERA=y
-# CONFIG_MSM_CAMERA_DEBUG is not set
+CONFIG_MSM_CAMERA_DEBUG=y
 
 #
 # Camera Sensor Selection
