@@ -156,23 +156,41 @@
 
 /* FIHTDC, Div2-SW2-BSP, Ming, PMEM { */
 /* Enlarge PMEM_SF to 30 MB for WVGA */
-#define MSM_PMEM_SF_SIZE    0x1E00000   //0x1700000
-/* } FIHTDC, Div2-SW2-BSP, Ming, PMEM */
-/* FIHTDC, Div2-SW2-BSP SungSCLee, HDMI { */
-#define MSM_FB_SIZE		0xA00000       ///0x500000
-/* } FIHTDC, Div2-SW2-BSP SungSCLee, HDMI */
-#define MSM_PMEM_ADSP_SIZE      0x2000000  //SW2-5-CL-Camera-720P-00*
+#define MSM_PMEM_SF_SIZE    0x1700000   //0x1700000
+#ifdef CONFIG_FB_MSM_TRIPLE_BUFFER
+#define MSM_FB_PRIM_BUF_SIZE   (864 * 480 * 4 * 3) /* 4bpp * 3 Pages */
+#else
+#define MSM_FB_PRIM_BUF_SIZE   (864 * 480 * 4 * 2) /* 4bpp * 2 Pages */
+#endif
+
+#ifdef CONFIG_FB_MSM_HDMI_ADV7520_PANEL
+#define MSM_FB_EXT_BUF_SIZE (1280 * 720 * 2 * 1) /* 2 bpp x 1 page */
+#else
+#define MSM_FB_EXT_BUF_SIZE    0
+#endif
+
+#ifdef CONFIG_FB_MSM_OVERLAY0_WRITEBACK
+/* width x height x 3 bpp x 2 frame buffer */
+#define MSM_FB_OVERLAY0_WRITEBACK_SIZE roundup((864 * 480 * 3 * 2), 4096)
+#else
+#define MSM_FB_OVERLAY0_WRITEBACK_SIZE  0
+#endif
+
+#define MSM_FB_SIZE roundup(MSM_FB_PRIM_BUF_SIZE + MSM_FB_EXT_BUF_SIZE, 4096)      ///0x500000
+
+#define MSM_PMEM_ADSP_SIZE      0x1E00000  //SW2-5-CL-Camera-720P-00*
 #define MSM_FLUID_PMEM_ADSP_SIZE	0x2800000
 #define PMEM_KERNEL_EBI1_SIZE   0x600000
+#define MSM_PMEM_AUDIO_SIZE     0x200000
 
 #define PMIC_GPIO_INT		27
 #define PMIC_VREG_WLAN_LEVEL	2900
 #define PMIC_GPIO_SD_DET	36
-#define PMIC_GPIO_SDC4_EN	17  /* PMIC GPIO Number 18 */
-/* FIHTDC, Div2-SW2-BSP SungSCLee, HDMI { */
-#ifdef CONFIG_FB_MSM_HDMI_ADV7520_PANEL
-#define PMIC_GPIO_HDMI_5V_EN	39  /* PMIC GPIO Number 40 */
-#endif
+#define PMIC_GPIO_SDC4_EN_N	17  /* PMIC GPIO Number 18 */
+#define PMIC_GPIO_HDMI_5V_EN_V3 32  /* PMIC GPIO for V3 H/W */
+#define PMIC_GPIO_HDMI_5V_EN_V2 39 /* PMIC GPIO for V2 H/W */
+
+#define ADV7520_I2C_ADDR	0x39
 
 //DIV5-CONN-MW-POWER SAVING MODE-01*[
 #if  defined(CONFIG_FIH_PROJECT_SF4Y6) && defined(CONFIG_FIH_WIMAX_GCT_SDIO)
@@ -200,6 +218,7 @@ static bool hdmi_init_done = false;
 #define OPTNAV_I2C_SLAVE_ADDR	(0xB0 >> 1)
 #define OPTNAV_IRQ		20
 #define OPTNAV_CHIP_SELECT	19
+#define PMIC_GPIO_SDC4_PWR_EN_N 24  /* PMIC GPIO Number 25 */
 
 //DIV5-PHONE-JH-WiMAX_GPIO-01+[
 #if defined(CONFIG_FIH_PROJECT_SF4Y6) && defined(CONFIG_FIH_WIMAX_GCT_SDIO)
@@ -210,10 +229,19 @@ static bool hdmi_init_done = false;
 /* Macros assume PMIC GPIOs start at 0 */
 #define PM8058_GPIO_PM_TO_SYS(pm_gpio)     (pm_gpio + NR_GPIO_IRQS)
 #define PM8058_GPIO_SYS_TO_PM(sys_gpio)    (sys_gpio - NR_GPIO_IRQS)
+#define PM8058_MPP_BASE			   PM8058_GPIO_PM_TO_SYS(PM8058_GPIOS)
+#define PM8058_MPP_PM_TO_SYS(pm_gpio)	   (pm_gpio + PM8058_MPP_BASE)
 
+#define PMIC_GPIO_FLASH_BOOST_ENABLE	15	/* PMIC GPIO Number 16 */
 #define PMIC_GPIO_HAP_ENABLE   16  /* PMIC GPIO Number 17 */
 
+#define PMIC_GPIO_WLAN_EXT_POR  22 /* PMIC GPIO NUMBER 23 */
+
+#define BMA150_GPIO_INT 1
+
 #define HAP_LVL_SHFT_MSM_GPIO 24
+
+#define PMIC_GPIO_QUICKVX_CLK 37 /* PMIC GPIO 38 */
 
 #define	PM_FLIP_MPP 5 /* PMIC MPP 06 */
 
