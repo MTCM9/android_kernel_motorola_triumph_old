@@ -1242,7 +1242,7 @@ static long mt9p111_set_brightness(int mode, int brightness)
 
     switch (brightness) 
     {
-        case CAMERA_BRIGHTNESS_LV0: //[EV 0]
+        case CAMERA_BRIGHTNESS_0: //[EV 0]
         {
             rc = mt9p111_i2c_write_table(&mt9p111_regs.br0_tbl[0], mt9p111_regs.br0_tbl_size);
             if (rc < 0)
@@ -1250,7 +1250,7 @@ static long mt9p111_set_brightness(int mode, int brightness)
         }
             break;
 
-        case CAMERA_BRIGHTNESS_LV1: //[EV 1]
+        case CAMERA_BRIGHTNESS_1: //[EV 1]
         {
             rc = mt9p111_i2c_write_table(&mt9p111_regs.br1_tbl[0], mt9p111_regs.br1_tbl_size);
             if (rc < 0)
@@ -1258,7 +1258,7 @@ static long mt9p111_set_brightness(int mode, int brightness)
         }
             break;
 
-        case CAMERA_BRIGHTNESS_LV2: //[EV 2]
+        case CAMERA_BRIGHTNESS_2: //[EV 2]
         {
             rc = mt9p111_i2c_write_table(&mt9p111_regs.br2_tbl[0], mt9p111_regs.br2_tbl_size);
             if (rc < 0)
@@ -1266,7 +1266,7 @@ static long mt9p111_set_brightness(int mode, int brightness)
         }
             break;
 
-        case CAMERA_BRIGHTNESS_LV3: //[EV 3 (default)]
+        case CAMERA_BRIGHTNESS_3: //[EV 3 (default)]
         {
             rc = mt9p111_i2c_write_table(&mt9p111_regs.br3_tbl[0], mt9p111_regs.br3_tbl_size);
             if (rc < 0)
@@ -1274,7 +1274,7 @@ static long mt9p111_set_brightness(int mode, int brightness)
         }
             break;
 
-        case CAMERA_BRIGHTNESS_LV4: //[EV 4]
+        case CAMERA_BRIGHTNESS_4: //[EV 4]
         {
             rc = mt9p111_i2c_write_table(&mt9p111_regs.br4_tbl[0], mt9p111_regs.br4_tbl_size);
             if (rc < 0)
@@ -1282,7 +1282,7 @@ static long mt9p111_set_brightness(int mode, int brightness)
         }
             break;
 
-        case CAMERA_BRIGHTNESS_LV5: //[EV 5]
+        case CAMERA_BRIGHTNESS_5: //[EV 5]
         {
             rc = mt9p111_i2c_write_table(&mt9p111_regs.br5_tbl[0], mt9p111_regs.br5_tbl_size);
             if (rc < 0)
@@ -1290,7 +1290,7 @@ static long mt9p111_set_brightness(int mode, int brightness)
         }
             break;
 
-        case CAMERA_BRIGHTNESS_LV6: //[EV +3]
+        case CAMERA_BRIGHTNESS_6: //[EV +3]
         {
             rc = mt9p111_i2c_write_table(&mt9p111_regs.br6_tbl[0], mt9p111_regs.br6_tbl_size);
             if (rc < 0)
@@ -1339,7 +1339,7 @@ static long mt9p111_set_contrast(int mode, int contrast)
 
     switch (contrast)
     {
-        case CAMERA_CONTRAST_LV1: //[Const -2]
+        case CAMERA_CONTRAST_MINUS2: //[Const -2]
         {
             rc = mt9p111_i2c_write_table(&mt9p111_regs.const_m2_tbl[0], mt9p111_regs.const_m2_tbl_size);
             if (rc < 0)
@@ -1347,7 +1347,7 @@ static long mt9p111_set_contrast(int mode, int contrast)
         }
             break;
 
-        case CAMERA_CONTRAST_LV3: //[Const -1]
+        case CAMERA_CONTRAST_MINUS1: //[Const -1]
         {
             rc = mt9p111_i2c_write_table(&mt9p111_regs.const_m1_tbl[0], mt9p111_regs.const_m1_tbl_size);
             if (rc < 0)
@@ -1355,7 +1355,7 @@ static long mt9p111_set_contrast(int mode, int contrast)
         }
             break;
 
-        case CAMERA_CONTRAST_LV5: //[Const 0 (default)]
+        case CAMERA_CONTRAST_ZERO: //[Const 0 (default)]
         {
             rc = mt9p111_i2c_write_table(&mt9p111_regs.const_zero_tbl[0], mt9p111_regs.const_zero_tbl_size);
             if (rc < 0)
@@ -1363,7 +1363,7 @@ static long mt9p111_set_contrast(int mode, int contrast)
         }
             break;
 
-        case CAMERA_CONTRAST_LV7: //[Const +1]
+        case CAMERA_CONTRAST_POSITIVE1: //[Const +1]
         {
             rc = mt9p111_i2c_write_table(&mt9p111_regs.const_p1_tbl[0], mt9p111_regs.const_p1_tbl_size);
             if (rc < 0)
@@ -1371,7 +1371,7 @@ static long mt9p111_set_contrast(int mode, int contrast)
         }
             break;
 
-        case CAMERA_CONTRAST_LV9: //[Const +2]
+        case CAMERA_CONTRAST_POSITIVE2: //[Const +2]
         {
             rc = mt9p111_i2c_write_table(&mt9p111_regs.const_p2_tbl[0], mt9p111_regs.const_p2_tbl_size);
             if (rc < 0)
@@ -1591,7 +1591,7 @@ static long mt9p111_set_saturation(int mode, int satu)
 
     switch (satu) 
     {
-        case CAMERA_SATURATION_LV0:
+        case CAMERA_SATURATION_MINUS2:
         {
             rc = mt9p111_i2c_write_table(&mt9p111_regs.satu_m2_tbl[0], mt9p111_regs.satu_m2_tbl_size);
             if (rc < 0)
@@ -1599,7 +1599,7 @@ static long mt9p111_set_saturation(int mode, int satu)
         }
             break;
 
-        case CAMERA_SATURATION_LV2:
+        case CAMERA_SATURATION_MINUS1:
         {
             rc = mt9p111_i2c_write_table(&mt9p111_regs.satu_m1_tbl[0], mt9p111_regs.satu_m1_tbl_size);
             if (rc < 0)
@@ -1607,7 +1607,7 @@ static long mt9p111_set_saturation(int mode, int satu)
         }
             break;
 
-        case CAMERA_SATURATION_LV4:
+        case CAMERA_SATURATION_ZERO:
         {
             rc = mt9p111_i2c_write_table(&mt9p111_regs.satu_zero_tbl[0], mt9p111_regs.satu_zero_tbl_size);
             if (rc < 0)
@@ -1615,7 +1615,7 @@ static long mt9p111_set_saturation(int mode, int satu)
         }
             break;
 
-        case CAMERA_SATURATION_LV6:
+        case CAMERA_SATURATION_POSITIVE1:
         {
             rc = mt9p111_i2c_write_table(&mt9p111_regs.satu_p1_tbl[0], mt9p111_regs.satu_p1_tbl_size);
             if (rc < 0)
@@ -1623,7 +1623,7 @@ static long mt9p111_set_saturation(int mode, int satu)
         }
             break;
 
-        case CAMERA_SATURATION_LV8:
+        case CAMERA_SATURATION_POSITIVE2:
         {
             rc = mt9p111_i2c_write_table(&mt9p111_regs.satu_p2_tbl[0], mt9p111_regs.satu_p2_tbl_size);
             if (rc < 0)
@@ -1673,7 +1673,7 @@ static long mt9p111_set_sharpness(int mode, int sharpness)
 
     switch (sharpness) 
     {
-        case CAMERA_SHARPNESS_LV1:
+        case CAMERA_SHARPNESS_MINUS2:
         {
             rc = mt9p111_i2c_write_table(&mt9p111_regs.sharp_m2_tbl[0], mt9p111_regs.sharp_m2_tbl_size);
             if (rc < 0)
@@ -1681,7 +1681,7 @@ static long mt9p111_set_sharpness(int mode, int sharpness)
         }
             break;
 
-        case CAMERA_SHARPNESS_LV3:
+        case CAMERA_SHARPNESS_MINUS1:
         {
             rc = mt9p111_i2c_write_table(&mt9p111_regs.sharp_m1_tbl[0], mt9p111_regs.sharp_m1_tbl_size);
             if (rc < 0)
@@ -1689,7 +1689,7 @@ static long mt9p111_set_sharpness(int mode, int sharpness)
         }
             break;
 
-        case CAMERA_SHARPNESS_LV5:
+        case CAMERA_SHARPNESS_ZERO:
         {
             rc = mt9p111_i2c_write_table(&mt9p111_regs.sharp_zero_tbl[0], mt9p111_regs.sharp_zero_tbl_size);
             if (rc < 0)
@@ -1697,7 +1697,7 @@ static long mt9p111_set_sharpness(int mode, int sharpness)
         }
             break;
 
-        case CAMERA_SHARPNESS_LV7:
+        case CAMERA_SHARPNESS_POSITIVE1:
         {
             rc = mt9p111_i2c_write_table(&mt9p111_regs.sharp_p1_tbl[0], mt9p111_regs.sharp_p1_tbl_size);
             if (rc < 0)
@@ -1705,7 +1705,7 @@ static long mt9p111_set_sharpness(int mode, int sharpness)
         }
             break;
 
-        case CAMERA_SHARPNESS_LV9:
+        case CAMERA_SHARPNESS_POSITIVE2:
         {
             rc = mt9p111_i2c_write_table(&mt9p111_regs.sharp_p2_tbl[0], mt9p111_regs.sharp_p2_tbl_size);
             if (rc < 0)
@@ -3016,11 +3016,11 @@ static int mt9p111_sensor_init_probe(const struct msm_camera_sensor_info *data)
 
         mt9p111_exposure_mode=CAMERA_AEC_FRAME_AVERAGE;
         mt9p111_antibanding_mode=CAMERA_ANTIBANDING_AUTO;
-        mt9p111_brightness_mode=CAMERA_BRIGHTNESS_LV3;
-        mt9p111_contrast_mode=CAMERA_CONTRAST_LV5;
+        mt9p111_brightness_mode=CAMERA_BRIGHTNESS_3;
+        mt9p111_contrast_mode=CAMERA_CONTRAST_ZERO;
         mt9p111_effect_mode=CAMERA_EFFECT_OFF;
-        mt9p111_saturation_mode=CAMERA_SATURATION_LV4;
-        mt9p111_sharpness_mode=CAMERA_SHARPNESS_LV5;
+        mt9p111_saturation_mode=CAMERA_SATURATION_ZERO;
+        mt9p111_sharpness_mode=CAMERA_SHARPNESS_ZERO;
         mt9p111_whitebalance_mode=CAMERA_WB_AUTO;
         mt9p111_iso_mode=CAMERA_ISO_ISO_AUTO;
 
@@ -3232,7 +3232,7 @@ int mt9p111_sensor_config(void __user *argp)
         }
             break;
 
-        case CFG_SET_TOUCHAEC:
+        case CFG_SET_touchAEC:
         {
             rc = mt9p111_set_touchAEC(cfg_data.cfg.AECIndex.enable,cfg_data.cfg.AECIndex.AEC_X,cfg_data.cfg.AECIndex.AEC_Y);
         }
@@ -3337,13 +3337,13 @@ int mt9p111_sensor_release(void)
 
 #ifdef CONFIG_MT9P111_STANDBY
     mt9p111_set_antibanding(SENSOR_PREVIEW_MODE,CAMERA_ANTIBANDING_OFF);
-    mt9p111_set_brightness(SENSOR_PREVIEW_MODE,CAMERA_BRIGHTNESS_LV3);
-    mt9p111_set_contrast(SENSOR_PREVIEW_MODE,CAMERA_CONTRAST_LV5);
+    mt9p111_set_brightness(SENSOR_PREVIEW_MODE,CAMERA_BRIGHTNESS_3);
+    mt9p111_set_contrast(SENSOR_PREVIEW_MODE,CAMERA_CONTRAST_ZERO);
     mt9p111_set_effect(SENSOR_PREVIEW_MODE,CAMERA_EFFECT_OFF);
     mt9p111_set_touchAEC(0,0,0);
     mt9p111_set_exposure_mode(SENSOR_PREVIEW_MODE,CAMERA_AEC_FRAME_AVERAGE);
-    mt9p111_set_saturation(SENSOR_PREVIEW_MODE,CAMERA_SATURATION_LV4);
-    mt9p111_set_sharpness(SENSOR_PREVIEW_MODE,CAMERA_SHARPNESS_LV5);
+    mt9p111_set_saturation(SENSOR_PREVIEW_MODE,CAMERA_SATURATION_ZERO);
+    mt9p111_set_sharpness(SENSOR_PREVIEW_MODE,CAMERA_SHARPNESS_ZERO);
     mt9p111_set_whitebalance(SENSOR_PREVIEW_MODE,CAMERA_WB_AUTO);
     mt9p111_set_CAF(0,0);//Div2-SW6-MM-HL-Camera-CAF-00+
     rc =mtp9111_sensor_standby(0);

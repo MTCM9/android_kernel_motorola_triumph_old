@@ -371,23 +371,6 @@ static long hm0356_set_sensor_mode(int mode)
             printk(KERN_ERR "hm0356_msg: case SENSOR_RAW_SNAPSHOT_MODE.\n");
         }
             break;
-//Div2-SW6-MM-CL-mirrorFront-00+{
-        case SENSOR_MIRROR_MODE:
-        {
-            printk(KERN_ERR "hm0356_msg: case SENSOR_MIRROR_MODE.\n");
-            if (hm0356info->sensor_Orientation == MSM_CAMERA_SENSOR_ORIENTATION_180) 
-            {
-                hm0356_i2c_write(hm0356_client->addr, 0x0006, 0x80, FC_BYTE_LEN);
-            }
-            if (hm0356info->sensor_Orientation == MSM_CAMERA_SENSOR_ORIENTATION_0) 
-            {
-                hm0356_i2c_write(hm0356_client->addr, 0x0006, 0x08, FC_BYTE_LEN);
-            }
-
-            printk("Finish Orientation Setting %d.\n",hm0356info->sensor_Orientation);
-        }
-            break;
-//Div2-SW6-MM-CL-mirrorFront-00+}
 
         default:
         return -EINVAL;
