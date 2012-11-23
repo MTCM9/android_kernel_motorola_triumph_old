@@ -89,6 +89,22 @@ int g_v4l2_opencnt;
 	res;							\
 })
 
+static inline void dump_data(void *data, int len)
+{
+	int i;
+	uint8_t *buff = (uint8_t *)(data);
+
+	if (len <= 0) return;
+	printk("======= data dump at %6p =======\n", data);
+	for (i = 1; i < len+1; ++i)
+	{
+		printk("%02hhx ", buff[i-1]);
+		if (i % 32 == 0)
+			printk("\n");
+	}
+	printk("\n================================\n");
+}
+
 static inline void free_qcmd(struct msm_queue_cmd *qcmd)
 {
 	if (!qcmd || !atomic_read(&qcmd->on_heap))
@@ -814,6 +830,16 @@ static int msm_control(struct msm_control_device *ctrl_pmsm,
 
 	if (qcmd_resp->command) {
 		udata = *(struct msm_ctrl_cmd *)qcmd_resp->command;
+
+		////////////////////////////////////////////////////////////////
+		printk("----------------------------------------------------\n");
+		printk("control message result (msm_control)\n");
+		printk("type: %hu, length: %hu\n", udata.type, udata.length);
+		dump_data(udata.value, udata.length);
+		printk("control message result end (msm_control)\n");
+		printk("----------------------------------------------------\n");
+		////////////////////////////////////////////////////////////////
+
 		if (udata.length > 0) {
 			if (copy_to_user(uptr,
 					 udata.value,
@@ -1009,6 +1035,21 @@ static int msm_get_stats(struct msm_sync *sync, void __user *arg)
 			qcmd->type, ctrl->length);
 
 		if (ctrl->length > 0) {
+			if (ctrl->type == 1) {
+				/* Dorregaray: Ugly hack:
+				 * for CAMERA_SET_PARM_DIMENSION message set the
+				 * ui_thumbnail_height to 144 (bytes 20-21)
+				 * ui_thumbnail_width to 192  (bytes 22-23)
+				 * to prevent the libcamera from crashing
+				 */
+				uint8_t *buff = (uint8_t *)(ctrl->value);
+				if (buff[20] == 0 && buff[21] == 0)
+					buff[20] = 0x90;
+				if (buff[22] == 0 && buff[23] == 0)
+					buff[22] = 0xc0;
+				printk("Dimensions dump to be returned:\n");
+				dump_data(buff, ctrl->length);
+			}
 			if (copy_to_user((void *)(se.ctrl_cmd.value),
 						ctrl->value,
 						ctrl->length)) {
