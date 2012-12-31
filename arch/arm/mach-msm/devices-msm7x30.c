@@ -33,42 +33,6 @@
 #ifdef CONFIG_PMIC8058
 #include <linux/mfd/pmic8058.h>
 #endif
-#include <mach/usbdiag.h>
-#include <mach/rpc_hsusb.h>
-
-/* EBI THERMAL DRIVER */
-static struct resource msm_ebi0_thermal_resources[] = {
-	{
-		.start  = 0xA8600000,
-		.end    = 0xA86005FF,
-		.name   = "physbase",
-		.flags  = IORESOURCE_MEM
-	}
-};
-
-struct platform_device msm_ebi0_thermal = {
-	.name           = "msm_popmem-tm",
-	.id             = 0,
-	.num_resources  = 1,
-	.resource       = msm_ebi0_thermal_resources
-};
-
-static struct resource msm_ebi1_thermal_resources[] = {
-	{
-		.start  = 0xA8700000,
-		.end    = 0xA87005FF,
-		.name   = "physbase",
-		.flags  = IORESOURCE_MEM
-	}
-};
-
-struct platform_device msm_ebi1_thermal = {
-	.name           = "msm_popmem-tm",
-	.id             = 1,
-	.num_resources  = 1,
-	.resource       = msm_ebi1_thermal_resources
-};
-
 
 static struct resource resources_uart1[] = {
 	{

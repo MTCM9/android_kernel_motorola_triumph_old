@@ -22,11 +22,7 @@
 #include <linux/input.h>
 #include <linux/usb.h>
 #include <linux/leds-pmic8058.h>
-#ifdef CONFIG_MSM_BUS_SCALING
 #include <mach/msm_bus.h>
-#endif
-
-#include <asm/clkdev.h>
 
 /* platform device data structures */
 struct msm_acpu_clock_platform_data {
@@ -172,6 +168,19 @@ struct msm_camera_sensor_strobe_flash_data {
 	int state;
 };
 
+enum camera_vreg_type {
+	REG_LDO,
+	REG_VS,
+};
+
+struct camera_vreg_t {
+	char *reg_name;
+	enum camera_vreg_type type;
+	int min_voltage;
+	int max_voltage;
+	int op_mode;
+};
+
 struct msm_camera_sensor_info {
 	const char *sensor_name;
 	int sensor_reset;
@@ -283,17 +292,6 @@ struct msm_adspdec_database {
 	struct dec_instance_table *dec_instance_list;
 };
 
-enum msm_mdp_hw_revision {
-    MDP_REV_20 = 1,
-    MDP_REV_22,	
-    MDP_REV_30, 		
-    MDP_REV_303, 	 	
-    MDP_REV_31, 		
-    MDP_REV_40, 	
-    MDP_REV_41,	
-    MDP_REV_42,	
-};
-
 struct msm_panel_common_pdata {
 	uintptr_t hw_revision_addr;
 	int gpio;
@@ -301,33 +299,17 @@ struct msm_panel_common_pdata {
 	int (*pmic_backlight)(int level);
 	int (*panel_num)(void);
 	void (*panel_config_gpio)(int);
-	int (*vga_switch)(int select_vga);
 	int *gpio_num;
 	int mdp_core_clk_rate;
-	unsigned num_mdp_clk;
-	int *mdp_core_clk_table;
-#ifdef CONFIG_MSM_BUS_SCALING
-	struct msm_bus_scale_pdata *mdp_bus_scale_table;
-#endif
-    int mdp_rev;
-    int (*writeback_offset)(void);
 };
 
 struct lcdc_platform_data {
 	int (*lcdc_gpio_config)(int on);
 	int (*lcdc_power_save)(int);
-	unsigned int (*lcdc_get_clk)(void);
-#ifdef CONFIG_MSM_BUS_SCALING
-	struct msm_bus_scale_pdata *bus_scale_table;
-#endif
 };
 
 struct tvenc_platform_data {
-	int poll;
 	int (*pm_vid_en)(int on);
-#ifdef CONFIG_MSM_BUS_SCALING
-	struct msm_bus_scale_pdata *bus_scale_table;
-#endif
 };
 
 struct mddi_platform_data {
@@ -337,7 +319,6 @@ struct mddi_platform_data {
 };
 
 struct mipi_dsi_platform_data {
-	int vsync_gpio;
 	int (*dsi_power_save)(int on);
 };
 
@@ -368,7 +349,6 @@ struct msm_i2c_platform_data {
 	const char *clk;
 	const char *pclk;
 	int src_clk_rate;
-	int use_gsbi_shared_mode;
 	void (*msm_i2c_config_gpio)(int iface, int config_type);
 };
 

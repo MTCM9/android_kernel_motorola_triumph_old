@@ -1,4 +1,4 @@
-/* Copyright (c) 2010-2011, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2010, Code Aurora Forum. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -38,9 +38,8 @@
 #include "vidc_pix_cache.h"
 #include "vidc.h"
 
-#define DDL_IDLE_STATE  0
 #define DDL_BUSY_STATE  1
-#define DDL_ERROR_STATE 2
+#define DDL_IDLE_STATE  0
 #define DDL_RUN_STATE   3
 
 #define DDL_IS_BUSY(ddl_context) \
@@ -82,16 +81,26 @@
 #define DDL_INVALID_CODEC_TYPE  ((u32)~0)
 #define DDL_INVALID_INTR_STATUS ((u32)~0)
 
-#define DDL_ENC_REQ_IFRAME        0x01
-#define DDL_ENC_CHANGE_IPERIOD    0x02
-#define DDL_ENC_CHANGE_BITRATE    0x04
-#define DDL_ENC_CHANGE_FRAMERATE  0x08
-#define DDL_ENC_CHANGE_CIR        0x10
+#define DDL_ENC_REQ_IFRAME        0x1
+#define DDL_ENC_CHANGE_IPERIOD    0x2
+#define DDL_ENC_CHANGE_BITRATE    0x4
+#define DDL_ENC_CHANGE_FRAMERATE  0x8
 
 #define DDL_DEC_REQ_OUTPUT_FLUSH  0x1
 
+#define DDL_FW_INST_SPACE_SIZE            (DDL_MEGA_BYTE(1))
+#define DDL_FW_AUX_HOST_CMD_SPACE_SIZE    (DDL_KILO_BYTE(10))
+#define DDL_FW_GLOVIDC_CONTEXT_SIZE       (DDL_KILO_BYTE(400))
+#define DDL_FW_H264DEC_CONTEXT_SPACE_SIZE (DDL_KILO_BYTE(600))
+#define DDL_FW_OTHER_CONTEXT_SPACE_SIZE   (DDL_KILO_BYTE(10))
+
+#define DDL_YUV_BUF_TYPE_LINEAR 0
+#define DDL_YUV_BUF_TYPE_TILE   1
+
+#define VCD_DEC_CPB_SIZE   (DDL_KILO_BYTE(512))
+
 #define DDL_MIN_NUM_OF_B_FRAME  0
-#define DDL_MAX_NUM_OF_B_FRAME  1
+#define DDL_MAX_NUM_OF_B_FRAME  2
 #define DDL_DEFAULT_NUM_OF_B_FRAME  DDL_MIN_NUM_OF_B_FRAME
 
 #define DDL_MIN_NUM_REF_FOR_P_FRAME             1
@@ -132,7 +141,6 @@ enum ddl_client_state{
 	DDL_CLIENT_WAIT_FOR_FRAME_DONE     = 0x8,
 	DDL_CLIENT_WAIT_FOR_EOS_DONE       = 0x9,
 	DDL_CLIENT_WAIT_FOR_CHEND          = 0xA,
-	DDL_CLIENT_FATAL_ERROR             = 0xB,
 	DDL_CLIENT_FAVIDC_ERROR            = 0xC,
 	DDL_CLIENT_32BIT                   = 0x7FFFFFFF
 };
@@ -182,7 +190,7 @@ struct ddl_dec_buffers{
 	struct ddl_buf_addr bit_plane2;
 	struct ddl_buf_addr bit_plane1;
 	struct ddl_buf_addr stx_parser;
-	struct ddl_buf_addr h264_mv[DDL_MAX_BUFFER_COUNT];
+	struct ddl_buf_addr h264_mv[32];
 	struct ddl_buf_addr h264_vert_nb_mv;
 	struct ddl_buf_addr h264_nb_ip;
 	struct ddl_buf_addr context;
@@ -243,7 +251,7 @@ struct ddl_encoder_data{
 	struct vcd_property_adaptive_rc_params  adaptive_rc;
 	struct vcd_property_intra_refresh_mb_number  intra_refresh;
 	struct vcd_property_buffer_format  buf_format;
-	struct vcd_property_buffer_format  recon_buf_format;
+	struct vcd_property_buffer_format  re_con_buf_format;
 	struct ddl_buf_addr  seq_header;
 	struct vcd_buffer_requirement  input_buf_req;
 	struct vcd_buffer_requirement  output_buf_req;
@@ -289,7 +297,6 @@ struct ddl_decoder_data {
 	struct ddl_yuv_buffer_size  dpb_buf_size;
 	struct vidc_1080p_dec_disp_info dec_disp_info;
 	u32  progressive_only;
-	u32  output_order;
 	u32  meta_data_enable_flag;
 	u32  suffix;
 	u32  meta_data_offset;
@@ -316,6 +323,7 @@ struct ddl_context{
 	u32 pix_cache_enable;
 	u32 fw_version;
 	u32 fw_memory_size;
+	u32 fw_ctxt_memory_size;
 	u32 cmd_seq_num;
 	u32 response_cmd_ch_id;
 	enum ddl_cmd_state cmd_state;
@@ -340,7 +348,6 @@ struct ddl_context{
 		(struct vidc_1080p_enc_seq_start_param *param);
 	void(*vidc_encode_frame_start[2])
 		(struct vidc_1080p_enc_frame_start_param *param);
-	u32 frame_channel_depth;
 };
 struct ddl_client_context{
 	struct ddl_context  *ddl_context;
@@ -381,7 +388,7 @@ u32  ddl_decoder_dpb_transact(struct ddl_decoder_data *decoder,
 	struct ddl_frame_data_tag *in_out_frame, u32 operation);
 u32  ddl_decoder_dpb_init(struct ddl_client_context *ddl);
 u32  ddl_client_transact(u32 , struct ddl_client_context **);
-u32  ddl_set_default_decoder_buffer_req(struct ddl_decoder_data *decoder,
+void ddl_set_default_decoder_buffer_req(struct ddl_decoder_data *decoder,
 	u32 estimate);
 void ddl_set_default_encoder_buffer_req(struct ddl_encoder_data
 	*encoder);
@@ -391,7 +398,7 @@ u32  ddl_decoder_ready_to_start(struct ddl_client_context *,
 	struct vcd_sequence_hdr *);
 u32  ddl_get_yuv_buffer_size(struct vcd_property_frame_size *frame_size,
 	struct vcd_property_buffer_format *buf_format, u32 interlace,
-	u32 decoding, u32 *pn_c_offset);
+	u32 *pn_c_offset);
 void ddl_calculate_stride(struct vcd_property_frame_size *frame_size,
 	u32 interlace);
 u32  ddl_codec_type_transact(struct ddl_client_context *ddl,
@@ -418,6 +425,7 @@ void ddl_free_enc_hw_buffers(struct ddl_client_context *ddl);
 void ddl_calc_dec_hw_buffers_size(enum vcd_codec codec, u32 width,
 	u32 height, u32 h264_dpb,
 	struct ddl_dec_buffer_size *buf_size);
+u32  ddl_allocate_h264_dec_mv_buffer(struct ddl_client_context *ddl);
 u32  ddl_allocate_dec_hw_buffers(struct ddl_client_context *ddl);
 u32  ddl_calc_enc_hw_buffers_size(enum vcd_codec codec, u32 width,
 	u32 height, enum vcd_yuv_buffer_format  input_format,

@@ -34,7 +34,6 @@
 #include <linux/delay.h>
 #include <mach/internal_power_rail.h>
 #include <mach/clk.h>
-#include <linux/pm_runtime.h>
 
 #include "vcd_api.h"
 #include "vidc_init_internal.h"
@@ -113,7 +112,7 @@ static void vidc_work_handler(struct work_struct *work)
 
 static DECLARE_WORK(vidc_work, vidc_work_handler);
 
-static int __devinit vidc_720p_probe(struct platform_device *pdev)
+static int __init vidc_720p_probe(struct platform_device *pdev)
 {
 	struct resource *resource;
 	DBG("Enter %s()\n", __func__);
@@ -151,8 +150,6 @@ static int __devinit vidc_720p_probe(struct platform_device *pdev)
 		ERR("%s: create workque failed\n", __func__);
 		return -ENOMEM;
 	}
-	pm_runtime_set_active(&pdev->dev);
-	pm_runtime_enable(&pdev->dev);
 	return 0;
 }
 
@@ -162,34 +159,15 @@ static int __devexit vidc_720p_remove(struct platform_device *pdev)
 		ERR("Invalid plaform device ID = %d\n", pdev->id);
 		return -EINVAL;
 	}
-	pm_runtime_disable(&pdev->dev);
-
 	return 0;
 }
 
-static int vidc_runtime_suspend(struct device *dev)
-{
-	dev_dbg(dev, "pm_runtime: suspending...\n");
-	return 0;
-}
-
-static int vidc_runtime_resume(struct device *dev)
-{
-	dev_dbg(dev, "pm_runtime: resuming...\n");
-	return 0;
-}
-
-static const struct dev_pm_ops vidc_dev_pm_ops = {
-	.runtime_suspend = vidc_runtime_suspend,
-	.runtime_resume = vidc_runtime_resume,
-};
 
 static struct platform_driver msm_vidc_720p_platform_driver = {
 	.probe = vidc_720p_probe,
 	.remove = vidc_720p_remove,
 	.driver = {
-		.name = "msm_vidc",
-		.pm   = &vidc_dev_pm_ops,
+				.name = "msm_vidc",
 	},
 };
 
@@ -266,23 +244,25 @@ static int __init vidc_init(void)
 		ERR("%s() :request_irq failed\n", __func__);
 		goto error_vidc_platfom_register;
 	}
-	res_trk_init(vidc_device_p->device, vidc_device_p->irq);
+
 	vidc_timer_wq = create_singlethread_workqueue("vidc_timer_wq");
 	if (!vidc_timer_wq) {
 		ERR("%s: create workque failed\n", __func__);
 		rc = -ENOMEM;
 		goto error_vidc_platfom_register;
 	}
+
 	DBG("Disabling IRQ in %s()\n", __func__);
 	disable_irq_nosync(vidc_device_p->irq);
 	INIT_WORK(&vidc_device_p->vidc_timer_worker,
 			  vidc_timer_handler);
 	spin_lock_init(&vidc_spin_lock);
 	INIT_LIST_HEAD(&vidc_device_p->vidc_timer_queue);
-
+	res_trk_init(vidc_device_p->device, vidc_device_p->irq);
 	vidc_device_p->ref_count = 0;
 	vidc_device_p->firmware_refcount = 0;
 	vidc_device_p->get_firmware = 0;
+
 	return 0;
 
 error_vidc_platfom_register:

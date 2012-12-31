@@ -1,4 +1,4 @@
-/* Copyright (c) 2009-2011, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2009-2010, Code Aurora Forum. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -30,8 +30,6 @@
 #ifndef MIPI_DSI_H
 #define MIPI_DSI_H
 
-#include <mach/scm-io.h>
-
 #ifdef BIT
 #undef BIT
 #endif
@@ -46,14 +44,6 @@
 #define MIPI_OUTP(addr, data) writel((data), (addr))
 #define MIPI_INP(addr) readl(addr)
 
-#ifdef CONFIG_MSM_SECURE_IO
-#define MIPI_OUTP_SECURE(addr, data) secure_writel((data), (addr))
-#define MIPI_INP_SECURE(addr) secure_readl(addr)
-#else
-#define MIPI_OUTP_SECURE(addr, data) writel((data), (addr))
-#define MIPI_INP_SECURE(addr) readl(addr)
-#endif
-
 #define MIPI_DSI_PRIM 1
 #define MIPI_DSI_SECD 2
 
@@ -63,60 +53,26 @@
 
 #define DSI_PANEL_MAX	2
 
-enum {		/* mipi dsi panel */
-	DSI_VIDEO_MODE,
-	DSI_CMD_MODE,
-};
-
-#define DSI_NON_BURST_SYNCH_PULSE	0
-#define DSI_NON_BURST_SYNCH_EVENT	1
-#define DSI_BURST_MODE			2
 
 
-#define DSI_RGB_SWAP_RGB	0
-#define DSI_RGB_SWAP_RBG	1
-#define DSI_RGB_SWAP_BGR	2
-#define DSI_RGB_SWAP_BRG	3
-#define DSI_RGB_SWAP_GRB	4
-#define DSI_RGB_SWAP_GBR	5
-
-#define DSI_VIDEO_DST_FORMAT_RGB565		0
-#define DSI_VIDEO_DST_FORMAT_RGB666		1
-#define DSI_VIDEO_DST_FORMAT_RGB666_LOOSE	2
-#define DSI_VIDEO_DST_FORMAT_RGB888		3
-
-#define DSI_CMD_DST_FORMAT_RGB111	0
-#define DSI_CMD_DST_FORMAT_RGB332	3
-#define DSI_CMD_DST_FORMAT_RGB444	4
-#define DSI_CMD_DST_FORMAT_RGB565	6
-#define DSI_CMD_DST_FORMAT_RGB666	7
-#define DSI_CMD_DST_FORMAT_RGB888	8
-
-#define DSI_INTR_ERROR_MASK		BIT(25)
-#define DSI_INTR_ERROR			BIT(24)
-#define DSI_INTR_VIDEO_DONE_MASK	BIT(17)
-#define DSI_INTR_VIDEO_DONE		BIT(16)
-#define DSI_INTR_CMD_MDP_DONE_MASK	BIT(9)
-#define DSI_INTR_CMD_MDP_DONE		BIT(8)
-#define DSI_INTR_CMD_DMA_DONE_MASK	BIT(1)
-#define DSI_INTR_CMD_DMA_DONE		BIT(0)
-
-#define DSI_CMD_TRIGGER_NONE		0x0	/* mdp trigger */
-#define DSI_CMD_TRIGGER_TE		0x02
-#define DSI_CMD_TRIGGER_SW		0x04
-#define DSI_CMD_TRIGGER_SW_SEOF		0x05	/* cmd dma only */
-#define DSI_CMD_TRIGGER_SW_TE		0x06
+#define DSI_ERROR_STAT BIT(24)
 
 extern struct device dsi_dev;
-extern int mipi_dsi_clk_on;
 
 struct dsi_clk_desc {
 	uint32 src;
 	uint32 m;
 	uint32 n;
 	uint32 d;
-	uint32 mnd_mode;
-	uint32 pre_div_func;
+};
+
+struct dsi_phy_ctrl {
+	uint32 regulator[4];
+	uint32 timing[12];
+	uint32 ctrl[4];
+	uint32 strength[4];
+	uint32 pll[21];
+	uint32 clkout;
 };
 
 #define DSI_HOST_HDR_SIZE	4
@@ -129,10 +85,7 @@ struct dsi_clk_desc {
 #define DSI_HDR_DATA1(data)	((data) & 0x0ff)
 #define DSI_HDR_WC(wc)		((wc) & 0x0ffff)
 
-#define DSI_BUF_SIZE	1024
-#define MIPI_DSI_MRPS	0x04  /* Maximum Return Packet Size */
-
-#define MIPI_DSI_REG_LEN 16 /* 4 x 4 bytes register */
+#define DSI_BUF_SIZE	2048
 
 struct dsi_buf {
 	uint32 *hdr;	/* dsi host header */
@@ -159,7 +112,6 @@ struct dsi_buf {
 #define DTYPE_GEN_READ1		0x14	/* long read, 1 parameter */
 #define DTYPE_GEN_READ2		0x24	/* long read, 2 parameter */
 
-#define DTYPE_TEAR_ON		0x35	/* set tear on */
 #define DTYPE_MAX_PKTSIZE	0x37	/* set max packet size */
 #define DTYPE_NULL_PKT		0x09	/* null packet, no data */
 #define DTYPE_BLANK_PKT		0x19	/* blankiing packet, no data */
@@ -175,40 +127,18 @@ struct dsi_cmd_desc {
 	int last;
 	int vc;
 	int ack;	/* ask ACK from peripheral */
-	int wait;
 	int dlen;
 	char *payload;
 };
 
-
-/* MIPI_DSI_MRPS, Maximum Return Packet Size */
-extern char max_pktsize[2]; /* defined at mipi_dsi.c */
-
 char *mipi_dsi_buf_reserve_hdr(struct dsi_buf *dp, int hlen);
 char *mipi_dsi_buf_init(struct dsi_buf *dp);
-void mipi_dsi_init(void);
 int mipi_dsi_buf_alloc(struct dsi_buf *, int size);
-int mipi_dsi_cmd_dma_add(struct dsi_buf *dp, struct dsi_cmd_desc *cm);
-int mipi_dsi_cmds_tx(struct msm_fb_data_type *mfd,
-		struct dsi_buf *dp, struct dsi_cmd_desc *cmds, int cnt);
-
-int mipi_dsi_cmd_dma_tx(struct dsi_buf *dp);
+int mipi_dsi_dma_cmd_add(struct dsi_buf *dp, struct dsi_cmd_desc *cm);
+int mipi_dsi_dma_cmd_tx(struct dsi_buf *dp);
 int mipi_dsi_cmd_reg_tx(uint32 data);
-int mipi_dsi_cmds_rx(struct msm_fb_data_type *mfd,
-			struct dsi_buf *tp, struct dsi_buf *rp,
-			struct dsi_cmd_desc *cmds, int len);
-int mipi_dsi_cmd_dma_rx(struct dsi_buf *tp, int rlen);
-void mipi_dsi_host_init(struct mipi_panel_info *pinfo);
-void mipi_dsi_op_mode_config(int mode);
+void mipi_dsi_host_init(void);
 void mipi_dsi_cmd_mode_ctrl(int enable);
-void mdp4_dsi_cmd_trigger(void);
-void mipi_dsi_cmd_mdp_sw_trigger(void);
-void mipi_dsi_cmd_bta_sw_trigger(void);
-void mipi_dsi_ack_err_status(void);
-void mipi_dsi_set_tear_on(struct msm_fb_data_type *mfd);
-void mipi_dsi_set_tear_off(struct msm_fb_data_type *mfd);
-void mipi_dsi_clk_enable(void);
-void mipi_dsi_clk_disable(void);
 
 irqreturn_t mipi_dsi_isr(int irq, void *ptr);
 

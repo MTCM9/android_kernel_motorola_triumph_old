@@ -61,12 +61,9 @@ static uint32_t bytes_per_pixel[] = {
 extern uint32 mdp_plv[];
 extern struct semaphore mdp_ppp_mutex;
 
-int mdp_get_bytes_per_pixel(uint32_t format,
-				 struct msm_fb_data_type *mfd)
+int mdp_get_bytes_per_pixel(uint32_t format)
 {
 	int bpp = -EINVAL;
-	if (format == MDP_FB_FORMAT)
-		format = mfd->fb_imgType;
 	if (format < ARRAY_SIZE(bytes_per_pixel))
 		bpp = bytes_per_pixel[format];
 
@@ -558,21 +555,25 @@ static void get_len(struct mdp_img *img, struct mdp_rect *rect, uint32_t bpp,
 static void flush_imgs(struct mdp_blit_req *req, int src_bpp, int dst_bpp,
 			struct file *p_src_file, struct file *p_dst_file)
 {
-	uint32_t src0_len, src1_len;
+	uint32_t src0_len, src1_len, dst0_len, dst1_len;
 
-	if (!(req->flags & MDP_BLIT_NON_CACHED)) {
-		/* flush src images to memory before dma to mdp */
-		get_len(&req->src, &req->src_rect, src_bpp,
-		&src0_len, &src1_len);
+	/* flush src images to memory before dma to mdp */
+	get_len(&req->src, &req->src_rect, src_bpp,
+	&src0_len, &src1_len);
 
+	flush_pmem_file(p_src_file,
+	req->src.offset, src0_len);
+
+	if (IS_PSEUDOPLNR(req->src.format))
 		flush_pmem_file(p_src_file,
-		req->src.offset, src0_len);
+			req->src.offset + src0_len, src1_len);
 
-		if (IS_PSEUDOPLNR(req->src.format))
-			flush_pmem_file(p_src_file,
-				req->src.offset + src0_len, src1_len);
-	}
+	get_len(&req->dst, &req->dst_rect, dst_bpp, &dst0_len, &dst1_len);
+	flush_pmem_file(p_dst_file, req->dst.offset, dst0_len);
 
+	if (IS_PSEUDOPLNR(req->dst.format))
+		flush_pmem_file(p_dst_file,
+			req->dst.offset + dst0_len, dst1_len);
 }
 #else
 static void flush_imgs(struct mdp_blit_req *req, int src_bpp, int dst_bpp,
@@ -1155,7 +1156,6 @@ struct mdp_blit_req *req, struct file *p_src_file, struct file *p_dst_file)
 #ifdef	CONFIG_FB_MSM_MDP31
 	MDP_OUTP(MDP_BASE + 0x00100, 0xFF00);
 #endif
-	wmb();
 	mdp_pipe_kickoff(MDP_PPP_TERM, mfd);
 }
 
@@ -1163,42 +1163,27 @@ static int mdp_ppp_verify_req(struct mdp_blit_req *req)
 {
 	u32 src_width, src_height, dst_width, dst_height;
 
-	if (req == NULL) {
-		printk(KERN_ERR "\n%s(): Error in Line %u", __func__,
-			__LINE__);
+	if (req == NULL)
 		return -1;
-	}
 
 	if (MDP_IS_IMGTYPE_BAD(req->src.format) ||
-	    MDP_IS_IMGTYPE_BAD(req->dst.format)) {
-		printk(KERN_ERR "\n%s(): Error in Line %u", __func__,
-			__LINE__);
+	    MDP_IS_IMGTYPE_BAD(req->dst.format))
 		return -1;
-	}
 
 	if ((req->src.width == 0) || (req->src.height == 0) ||
 	    (req->src_rect.w == 0) || (req->src_rect.h == 0) ||
 	    (req->dst.width == 0) || (req->dst.height == 0) ||
-	    (req->dst_rect.w == 0) || (req->dst_rect.h == 0)) {
-		printk(KERN_ERR "\n%s(): Error in Line %u", __func__,
-			__LINE__);
+	    (req->dst_rect.w == 0) || (req->dst_rect.h == 0))
 
 		return -1;
-	}
 
 	if (((req->src_rect.x + req->src_rect.w) > req->src.width) ||
-	    ((req->src_rect.y + req->src_rect.h) > req->src.height)) {
-		printk(KERN_ERR "\n%s(): Error in Line %u", __func__,
-			__LINE__);
+	    ((req->src_rect.y + req->src_rect.h) > req->src.height))
 		return -1;
-	}
 
 	if (((req->dst_rect.x + req->dst_rect.w) > req->dst.width) ||
-	    ((req->dst_rect.y + req->dst_rect.h) > req->dst.height)) {
-		printk(KERN_ERR "\n%s(): Error in Line %u", __func__,
-			__LINE__);
+	    ((req->dst_rect.y + req->dst_rect.h) > req->dst.height))
 		return -1;
-	}
 
 	/*
 	 * scaling range check
@@ -1237,20 +1222,15 @@ static int mdp_ppp_verify_req(struct mdp_blit_req *req)
 	if (((MDP_SCALE_Q_FACTOR * dst_width) / src_width >
 	     MDP_MAX_X_SCALE_FACTOR)
 	    || ((MDP_SCALE_Q_FACTOR * dst_width) / src_width <
-		MDP_MIN_X_SCALE_FACTOR)) {
-		printk(KERN_ERR "\n%s(): Error in Line %u", __func__,
-			__LINE__);
+		MDP_MIN_X_SCALE_FACTOR))
 		return -1;
-	}
 
 	if (((MDP_SCALE_Q_FACTOR * dst_height) / src_height >
 	     MDP_MAX_Y_SCALE_FACTOR)
 	    || ((MDP_SCALE_Q_FACTOR * dst_height) / src_height <
-		MDP_MIN_Y_SCALE_FACTOR)) {
-		printk(KERN_ERR "\n%s(): Error in Line %u", __func__,
-			__LINE__);
+		MDP_MIN_Y_SCALE_FACTOR))
 		return -1;
-	}
+
 	return 0;
 }
 
@@ -1469,7 +1449,7 @@ int mdp_ppp_blit(struct fb_info *info, struct mdp_blit_req *req)
 	/* MDP cmd block enable */
 	mdp_pipe_ctrl(MDP_CMD_BLOCK, MDP_BLOCK_POWER_ON, FALSE);
 
-#ifndef CONFIG_FB_MSM_MDP22
+#ifdef CONFIG_FB_MSM_MDP31
 	mdp_start_ppp(mfd, &iBuf, req, p_src_file, p_dst_file);
 #else
 	/* bg tile fetching HW workaround */

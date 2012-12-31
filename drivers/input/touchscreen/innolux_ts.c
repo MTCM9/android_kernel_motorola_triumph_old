@@ -15,7 +15,7 @@
 //#include <linux/bu21018mwv_fw1.h>
 #include "../../../arch/arm/mach-msm/smd_private.h"
 #include "../../../arch/arm/mach-msm/proc_comm.h"
-#include <linux/slab.h>	// temp for BSP 4040
+
 //
 extern unsigned int fih_get_product_id(void);
 extern unsigned int fih_get_product_phase(void);

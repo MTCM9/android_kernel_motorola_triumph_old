@@ -194,7 +194,6 @@ static u32 ddl_handle_hw_fatal_errors(struct ddl_context
 
 	case VSP_NOT_READY:
 	case BUFFER_FULL_STATE:
-	case NULL_DB_POINTER:
 		ERR("HW FATAL ERROR");
 		ddl_hw_fatal_cb(ddl_context);
 		status = true;
@@ -250,6 +249,7 @@ static u32 ddl_handle_client_fatal_errors(struct ddl_context
 	case NULL_COMAMND_CONTROL_COMM_POINTER:
 	case NULL_METADATA_INPUT_POINTER:
 	case NULL_DPB_POINTER:
+	case NULL_DB_POINTER:
 	case NULL_COMV_POINTER:
 		{
 			status = true;
@@ -364,10 +364,6 @@ static u32 ddl_handle_core_recoverable_errors(struct ddl_context \
 			vcd_status = VCD_ERR_BITSTREAM_ERR;
 			break;
 		}
-	case PROFILE_UNKOWN:
-		if (ddl->decoding)
-			vcd_status = VCD_ERR_BITSTREAM_ERR;
-		break;
 	}
 
 	if (!vcd_status && vcd_event == VCD_EVT_RESP_INPUT_DONE)
@@ -555,7 +551,6 @@ u32 ddl_handle_seqhdr_fail_error(struct ddl_context *ddl_context)
 		case HEADER_NOT_FOUND:
 		case INVALID_SPS_ID:
 		case INVALID_PPS_ID:
-		case PROFILE_UNKOWN:
 			ERR("SEQ-HDR-FAILED!!!");
 			if (decoder->header_in_start) {
 				decoder->header_in_start = false;

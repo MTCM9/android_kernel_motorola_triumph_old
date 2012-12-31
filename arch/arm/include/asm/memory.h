@@ -76,16 +76,6 @@
  */
 #define IOREMAP_MAX_ORDER	24
 
-/*
- * Size of DMA-consistent memory region.  Must be multiple of 2M,
- * between 2MB and 14MB inclusive.
- */
-#ifndef CONSISTENT_DMA_SIZE
-#define CONSISTENT_DMA_SIZE 	SZ_2M
-#endif
-
-#define CONSISTENT_BASE		(CONSISTENT_END - CONSISTENT_DMA_SIZE)
-
 #else /* CONFIG_MMU */
 
 /*
@@ -123,28 +113,26 @@
 #endif /* !CONFIG_MMU */
 
 /*
+ * Size of DMA-consistent memory region.  Must be multiple of 2M,
+ * between 2MB and 14MB inclusive.
+ */
+#ifndef CONSISTENT_DMA_SIZE
+#define CONSISTENT_DMA_SIZE SZ_2M
+#endif
+
+/*
  * Physical vs virtual RAM address space conversion.  These are
  * private definitions which should NOT be used outside memory.h
  * files.  Use virt_to_phys/phys_to_virt/__pa/__va instead.
  */
-#ifndef __virt_to_phys
 #define __virt_to_phys(x)	((x) - PAGE_OFFSET + PHYS_OFFSET)
-#endif
-#ifndef __phys_to_virt
 #define __phys_to_virt(x)	((x) - PHYS_OFFSET + PAGE_OFFSET)
-#endif
 
 /*
  * Convert a physical address to a Page Frame Number and back
  */
 #define	__phys_to_pfn(paddr)	((paddr) >> PAGE_SHIFT)
 #define	__pfn_to_phys(pfn)	((pfn) << PAGE_SHIFT)
-
-/*
- * Convert a page to/from a physical address
- */
-#define page_to_phys(page)	(__pfn_to_phys(page_to_pfn(page)))
-#define phys_to_page(phys)	(pfn_to_page(__phys_to_pfn(phys)))
 
 #ifndef __ASSEMBLY__
 
@@ -304,6 +292,11 @@ static inline __deprecated void *bus_to_virt(unsigned long x)
 #endif /* NODE_MEM_SIZE_BITS */
 
 #endif /* !CONFIG_DISCONTIGMEM */
+
+/*
+ * For BIO.  "will die".  Kill me when bio_to_phys() and bvec_to_phys() die.
+ */
+#define page_to_phys(page)	(page_to_pfn(page) << PAGE_SHIFT)
 
 /*
  * Optional coherency support.  Currently used only by selected

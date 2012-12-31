@@ -1,4 +1,4 @@
-/* Copyright (c) 2010-2011, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2010, Code Aurora Forum. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -52,30 +52,6 @@
 #define VIDC_SM_FREE_LUMA_DPB_ADDR                          0x00c4
 #define VIDC_SM_FREE_LUMA_DPB_BMSK                          0xffffffff
 #define VIDC_SM_FREE_LUMA_DPB_SHFT                          0
-
-#define VIDC_SM_FREE_LUMA_DPB_DEC_ORDER_ADDR                0x00fc
-#define VIDC_SM_FREE_LUMA_DPB_DEC_ORDER_BMSK                0xffffffff
-#define VIDC_SM_FREE_LUMA_DPB_DEC_ORDER_SHFT                0
-
-#define VIDC_SM_DEC_ORDER_WIDTH_ADDR                        0x00e8
-#define VIDC_SM_DEC_ORDER_WIDTH_BMSK                        0xffffffff
-#define VIDC_SM_DEC_ORDER_WIDTH_SHFT                        0
-
-#define VIDC_SM_DEC_ORDER_HEIGHT_ADDR                       0x00ec
-#define VIDC_SM_DEC_ORDER_HEIGHT_BMSK                       0xffffffff
-#define VIDC_SM_DEC_ORDER_HEIGHT_SHFT                       0
-
-#define VIDC_SM_DEC_CROP_INFO1_ADDR                         0x00f4
-#define VIDC_SM_DEC_CROP_INFO1_RIGHT_OFFSET_BMSK            0xffff0000
-#define VIDC_SM_DEC_CROP_INFO1_RIGHT_OFFSET_SHFT            16
-#define VIDC_SM_DEC_CROP_INFO1_LEFT_OFFSET_BMSK             0x0000ffff
-#define VIDC_SM_DEC_CROP_INFO1_LEFT_OFFSET_SHFT             0
-
-#define VIDC_SM_DEC_CROP_INFO2_ADDR                         0x00f8
-#define VIDC_SM_DEC_CROP_INFO2_BOTTOM_OFFSET_BMSK           0xffff0000
-#define VIDC_SM_DEC_CROP_INFO2_BOTTOM_OFFSET_SHFT           16
-#define VIDC_SM_DEC_CROP_INFO2_TOP_OFFSET_BMSK              0x0000ffff
-#define VIDC_SM_DEC_CROP_INFO2_TOP_OFFSET_SHFT              0
 
 #define VIDC_SM_ENC_EXT_CTRL_ADDR                    0x0028
 #define VIDC_SM_ENC_EXT_CTRL_VBV_BUFFER_SIZE_BMSK    0xffff0000
@@ -281,46 +257,6 @@ void vidc_sm_get_available_luma_dpb_address(struct ddl_buf_addr
 		VIDC_SM_FREE_LUMA_DPB_ADDR);
 }
 
-void vidc_sm_get_available_luma_dpb_dec_order_address(
-	struct ddl_buf_addr	*shared_mem,
-	u32 *pn_free_luma_dpb_address)
-{
-	*pn_free_luma_dpb_address = DDL_MEM_READ_32(shared_mem,
-		VIDC_SM_FREE_LUMA_DPB_DEC_ORDER_ADDR);
-}
-
-void vidc_sm_get_dec_order_resl(
-	struct ddl_buf_addr *shared_mem, u32 *width, u32 *height)
-{
-	*width = DDL_MEM_READ_32(shared_mem,
-			VIDC_SM_DEC_ORDER_WIDTH_ADDR);
-	*height = DDL_MEM_READ_32(shared_mem,
-			VIDC_SM_DEC_ORDER_HEIGHT_ADDR);
-}
-
-void vidc_sm_get_dec_order_crop_info(
-	struct ddl_buf_addr *shared_mem, u32 *left,
-	u32 *right, u32 *top, u32 *bottom)
-{
-	u32 crop_data;
-	crop_data = DDL_MEM_READ_32(shared_mem,
-		VIDC_SM_DEC_CROP_INFO1_ADDR);
-	*left = VIDC_GETFIELD(crop_data,
-		VIDC_SM_DEC_CROP_INFO1_LEFT_OFFSET_BMSK,
-		VIDC_SM_DEC_CROP_INFO1_LEFT_OFFSET_SHFT);
-	*right = VIDC_GETFIELD(crop_data,
-		VIDC_SM_DEC_CROP_INFO1_RIGHT_OFFSET_BMSK,
-		VIDC_SM_DEC_CROP_INFO1_RIGHT_OFFSET_SHFT);
-	crop_data = DDL_MEM_READ_32(shared_mem,
-		VIDC_SM_DEC_CROP_INFO2_ADDR);
-	*top = VIDC_GETFIELD(crop_data,
-		VIDC_SM_DEC_CROP_INFO2_TOP_OFFSET_BMSK,
-		VIDC_SM_DEC_CROP_INFO2_TOP_OFFSET_SHFT);
-	*bottom = VIDC_GETFIELD(crop_data,
-		VIDC_SM_DEC_CROP_INFO2_BOTTOM_OFFSET_BMSK,
-		VIDC_SM_DEC_CROP_INFO2_BOTTOM_OFFSET_SHFT);
-}
-
 void vidc_sm_set_extended_encoder_control(struct ddl_buf_addr
 	*shared_mem, u32 hec_enable,
 	enum VIDC_SM_frame_skip frame_skip_mode,
@@ -482,16 +418,6 @@ void vidc_sm_get_min_yc_dpb_sizes(struct ddl_buf_addr *shared_mem,
 		VIDC_SM_MIN_CHROMA_DPB_SIZE_ADDR);
 }
 
-void vidc_sm_set_concealment_color(struct ddl_buf_addr *shared_mem,
-	u32 conceal_ycolor, u32 conceal_ccolor)
-{
-	u32 conceal_color;
-
-	conceal_color = (((conceal_ycolor << 8) & 0xff00) |
-		(conceal_ccolor & 0xff));
-	DDL_MEM_WRITE_32(shared_mem, 0x00f0, conceal_color);
-}
-
 void vidc_sm_set_metadata_enable(struct ddl_buf_addr *shared_mem,
 	u32 extradata_enable, u32 qp_enable, u32 concealed_mb_enable,
 	u32 vc1Param_enable, u32 sei_nal_enable, u32 vui_enable,
@@ -622,10 +548,4 @@ void vidc_sm_set_encoder_new_i_period(struct ddl_buf_addr *shared_mem,
 {
 	DDL_MEM_WRITE_32(shared_mem, VIDC_SM_NEW_I_PERIOD_ADDR,
 		new_i_period);
-}
-void vidc_sm_set_encoder_init_rc_value(struct ddl_buf_addr *shared_mem,
-	u32 new_rc_value)
-{
-	DDL_MEM_WRITE_32(shared_mem, 0x011C, new_rc_value);
-
 }

@@ -889,10 +889,6 @@ static void mddi_process_rev_packets(void)
 	if (rev_packet_count >= 1) {
 		mddi_invalidate_cache_lines((uint32 *) pmhctl->rev_ptr_start,
 					    MDDI_REV_BUFFER_SIZE);
-	} else {
-		MDDI_MSG_ERR("Reverse pkt sent, no data rxd\n");
-		if (mddi_reg_read_value_ptr)
-			*mddi_reg_read_value_ptr = -EBUSY;
 	}
 	/* order the reads */
 	dma_coherent_post_ops();
@@ -1081,6 +1077,8 @@ static void mddi_process_rev_packets(void)
 				if (mddi_enable_reg_read_retry_once)
 					mddi_reg_read_retry =
 					    mddi_reg_read_retry_max;
+				else
+					mddi_reg_read_retry++;
 				pmhctl->rev_state = MDDI_REV_REG_READ_SENT;
 				pmhctl->stats.reg_read_failure++;
 			} else {

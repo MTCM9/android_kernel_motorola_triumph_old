@@ -15,13 +15,8 @@
 #include <linux/bu21018mwv_fw1.h>
 #include "../../../arch/arm/mach-msm/smd_private.h"
 #include "../../../arch/arm/mach-msm/proc_comm.h"
-#include <linux/slab.h>	// temp for BSP 4040
 
-
-#ifdef CONFIG_FIH_TOUCHSCREEN_INNOLUX
-extern int innolux_ts_active;
-#endif
-
+//
 extern unsigned int fih_get_product_id(void);
 extern unsigned int fih_get_product_phase(void);
 
@@ -132,7 +127,7 @@ static int bu21018mwv_get_ver(void)
 
     return 0;
 }
-/*
+
 static int my_atox(const char *ptr)
 {
 	int value = 0;
@@ -168,8 +163,7 @@ static int my_atoi(const char *name)
 	}
     }
 }
-*/
-/*
+
 static void bu21018mwv_read_ini(void)
 {
     static struct file *filp = NULL;
@@ -264,8 +258,7 @@ static void bu21018mwv_read_ini(void)
     filp_close(filp, NULL);
     filp = NULL;
 }
-*/
-/*
+
 static void re_init(void)
 {
     static struct file *filp = NULL;
@@ -349,8 +342,7 @@ static void re_init(void)
 	I2C_ByteWrite(0xB1, 0x00);
 	I2C_ByteWrite(0xC7, 0x01);
 }
-*/
-/*
+
 static void re_download_fw(void)
 {
     static struct file *filp = NULL;
@@ -432,20 +424,20 @@ static void re_download_fw(void)
     filp_close(filp, NULL);
     filp = NULL;
 }
-*/
+
 static void test_func(struct work_struct *work)
 {
 	switch (iosw)
 	{
-//		case 0:
-//			bu21018mwv_read_ini();
-//			break;
-//		case 1:
-//			re_init();
-//			break;
-//		case 2:
-//			re_download_fw();
-//			re_init();
+		case 0:
+			bu21018mwv_read_ini();
+			break;
+		case 1:
+			re_init();
+			break;
+		case 2:
+			re_download_fw();
+			re_init();
 			break;
 		default:
 			break;
@@ -1198,14 +1190,6 @@ static int bu21018mwv_probe(struct i2c_client *client, const struct i2c_device_i
 	struct input_dev *keyevent_input;
 	struct vreg *vreg_ldo12;
 	int rc;
-
-#ifdef CONFIG_FIH_TOUCHSCREEN_INNOLUX
-	if (innolux_ts_active)
-	{
-		printk(KERN_INFO "[Touch] %s: innolux already exists. bu21018mwv_probe() abort.\n", __func__);
-		return -ENODEV;
-	}
-#endif
 
 	// Read HWID
 	if (fih_get_product_id() == Product_FB0 && fih_get_product_phase() == Product_PR1)

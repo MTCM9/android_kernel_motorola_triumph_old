@@ -1,4 +1,4 @@
-/* Copyright (c) 2010, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2010-2011, Code Aurora Forum. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -43,8 +43,6 @@
 #define DDL_MAX_DP_FRAME_WIDTH  352
 #define DDL_MAX_DP_FRAME_HEIGHT 288
 
-#define DDL_MAX_BIT_RATE (14*1000*1000)
-
 #define DDL_SW_RESET_SLEEP 10
 
 #define VCD_MAX_NO_CLIENT  4
@@ -72,7 +70,7 @@
 #define DDL_MPEG_REFBUF_COUNT  2
 
 #define DDL_MPEG_COMV_BUF_NO 2
-#define DDL_H263_COMV_BUF_NO 2
+#define DDL_H263_COMV_BUF_NO 0
 #define DDL_COMV_BUFLINE_NO  128
 #define DDL_VC1_COMV_BUFLINE_NO  32
 #define DDL_MINIMUM_BYTE_PER_SLICE  1920
@@ -100,9 +98,11 @@
 ((DDL_NO_OF_MB(width, height) <= DDL_720P_MBS) \
  && (((width) <= DDL_MAX_FRAME_WIDTH) &&            \
      ((height) <= DDL_MAX_FRAME_WIDTH))            \
- && ((width) >= 32 && (height) >= 32)               \
- && (!((width) & DDL_FRAMESIZE_DIV_FACTOR) &&       \
-     !((height) & DDL_FRAMESIZE_DIV_FACTOR)))
+ && ((width) >= 32 && (height) >= 32))
+
+#define DDL_VALIDATE_ENC_FRAMESIZE(width, height) \
+	(!((width) & DDL_FRAMESIZE_DIV_FACTOR) &&     \
+     !((height) & DDL_FRAMESIZE_DIV_FACTOR))
 
 #define DDL_TILE_ALIGN_WIDTH     128
 #define DDL_TILE_ALIGN_HEIGHT    32

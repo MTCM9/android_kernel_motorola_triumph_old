@@ -160,6 +160,16 @@ enum v4l2_buf_type {
 	V4L2_BUF_TYPE_PRIVATE              = 0x80,
 };
 
+enum v4l2_ctrl_type {
+	V4L2_CTRL_TYPE_INTEGER	     = 1,
+	V4L2_CTRL_TYPE_BOOLEAN	     = 2,
+	V4L2_CTRL_TYPE_MENU	     = 3,
+	V4L2_CTRL_TYPE_BUTTON	     = 4,
+	V4L2_CTRL_TYPE_INTEGER64     = 5,
+	V4L2_CTRL_TYPE_CTRL_CLASS    = 6,
+	V4L2_CTRL_TYPE_STRING        = 7,
+};
+
 enum v4l2_tuner_type {
 	V4L2_TUNER_RADIO	     = 1,
 	V4L2_TUNER_ANALOG_TV	     = 2,
@@ -491,7 +501,7 @@ struct v4l2_jpegcompression {
 				 * you do, leave them untouched.
 				 * Inluding less markers will make the
 				 * resulting code smaller, but there will
-				 * be fewer applications which can read it.
+				 * be fewer aplications which can read it.
 				 * The presence of the APP and COM marker
 				 * is influenced by APP_len and COM_len
 				 * ONLY, not by this property! */
@@ -838,7 +848,7 @@ struct v4l2_input {
 	v4l2_std_id  std;
 	__u32	     status;
 	__u32	     capabilities;
-	__u32	     reserved[3];
+	__u32	     reserved[4];
 };
 
 /*  Values for the 'type' field */
@@ -885,7 +895,7 @@ struct v4l2_output {
 	__u32	     modulator;         /*  Associated modulator */
 	v4l2_std_id  std;
 	__u32	     capabilities;
-	__u32	     reserved[3];
+	__u32	     reserved[4];
 };
 /*  Values for the 'type' field */
 #define V4L2_OUTPUT_TYPE_MODULATOR		1
@@ -934,16 +944,6 @@ struct v4l2_ext_controls {
 #define V4L2_CTRL_ID2CLASS(id)    ((id) & 0x0fff0000UL)
 #define V4L2_CTRL_DRIVER_PRIV(id) (((id) & 0xffff) >= 0x1000)
 
-enum v4l2_ctrl_type {
-	V4L2_CTRL_TYPE_INTEGER	     = 1,
-	V4L2_CTRL_TYPE_BOOLEAN	     = 2,
-	V4L2_CTRL_TYPE_MENU	     = 3,
-	V4L2_CTRL_TYPE_BUTTON	     = 4,
-	V4L2_CTRL_TYPE_INTEGER64     = 5,
-	V4L2_CTRL_TYPE_CTRL_CLASS    = 6,
-	V4L2_CTRL_TYPE_STRING        = 7,
-};
-
 /*  Used in the VIDIOC_QUERYCTRL ioctl for querying controls */
 struct v4l2_queryctrl {
 	__u32		     id;
@@ -978,6 +978,7 @@ struct v4l2_querymenu {
 #define V4L2_CTRL_FLAG_NEXT_CTRL	0x80000000
 
 /*  User-class control IDs defined by V4L2 */
+#define V4L2_CID_MAX_CTRLS		1024
 #define V4L2_CID_BASE			(V4L2_CTRL_CLASS_USER | 0x900)
 #define V4L2_CID_USER_BASE 		V4L2_CID_BASE
 /*  IDs reserved for driver specific controls */
@@ -1045,7 +1046,7 @@ enum v4l2_colorfx {
 #define V4L2_CID_CHROMA_GAIN                    (V4L2_CID_BASE+36)
 
 /* last CID + 1 */
-#define V4L2_CID_LASTP1                         (V4L2_CID_BASE+37)
+#define V4L2_CID_LASTP1                         (V4L2_CID_BASE+34)
 
 /*  MPEG-class control IDs defined by V4L2 */
 #define V4L2_CID_MPEG_BASE 			(V4L2_CTRL_CLASS_MPEG | 0x900)

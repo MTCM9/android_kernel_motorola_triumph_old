@@ -270,6 +270,20 @@ if FIH_CONFIG_GROUP
             help
                 Toshiba tcm9001md hw standby
 
+        config FIH_HM0357
+            bool "Himax Sensor HM0357 (YUV 0.3M)"
+            depends on MSM_CAMERA && FIH_CONFIG_GROUP
+            default n
+            help
+                FIH Himax 0.3M YUV Sensor
+
+        config HM0357_STANDBY
+            bool "hm0357 soft standby"
+            depends on FIH_HM0357
+            default n
+            help
+                Himax hm0357 soft standby
+
         config SENSORS_YAS529
             bool "Yamaha YAS529 Driver(Combined with Bosch BMA150)"
             depends on MSM_CAMERA && FIH_CONFIG_GROUP
@@ -1212,6 +1226,12 @@ if FIH_CONFIG_GROUP
             help
                 This option enables this feature if there is HDMI support on the device.
 
+        config FIH_SFX_AUDIO
+            bool "Audio Driver"
+            depends on FIH_CONFIG_GROUP
+            default y
+            help
+                This option enables this feature if project is SFX
     endmenu
 
     # --- SF8-------------------------------------------------- END
@@ -1474,6 +1494,13 @@ if FIH_CONFIG_GROUP
               more of what is going on.
         endif
 
+        config FIH_TOUCHSCREEN_INNOLUX
+            bool "INNOLUX Touchscreen"
+            depends on I2C && FIH_CONFIG_GROUP
+            default n
+            help
+                Select if the INNOLUX touch panel is attached.
+                
         config FIH_TOUCHSCREEN_BU21018MWV
             bool "BU21018MWV Touchscreen"
             depends on I2C && FIH_CONFIG_GROUP

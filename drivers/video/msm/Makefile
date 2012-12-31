@@ -6,10 +6,9 @@ obj-$(CONFIG_FB_BACKLIGHT) += msm_fb_bl.o
 # MDP
 obj-y += mdp.o
 
-obj-$(CONFIG_DEBUG_FS) += mdp_debugfs.o
-
 ifeq ($(CONFIG_FB_MSM_MDP40),y)
 obj-y += mdp4_util.o
+obj-$(CONFIG_DEBUG_FS) += mdp_debugfs.o
 else
 obj-y += mdp_hw_init.o
 obj-y += mdp_ppp.o
@@ -58,13 +57,9 @@ obj-$(CONFIG_FB_MSM_MDDI) += msm_mddi.o
 msm_mddi_ext-objs := mddihost_e.o mddi_ext.o
 obj-$(CONFIG_FB_MSM_EXTMDDI) += msm_mddi_ext.o
 
-# MIPI gereric
-msm_mipi-objs := mipi_dsi.o mipi_dsi_host.o
+# MIPI
+msm_mipi-objs := mipi_dsi.o mipi_dsi_host.o mipi_toshiba.o
 obj-$(CONFIG_FB_MSM_MIPI_DSI) += msm_mipi.o
-
-# MIPI manufacture
-obj-$(CONFIG_FB_MSM_MIPI_DSI_TOSHIBA) += mipi_toshiba.o
-obj-$(CONFIG_FB_MSM_MIPI_DSI_NOVATEK) += mipi_novatek.o
 
 # TVEnc
 obj-$(CONFIG_FB_MSM_TVOUT) += tvenc.o
@@ -78,6 +73,9 @@ obj-$(CONFIG_FB_MSM_EBI2_TMD_QVGA_EPSON_QCIF) += ebi2_tmd20.o
 obj-$(CONFIG_FB_MSM_EBI2_TMD_QVGA_EPSON_QCIF) += ebi2_l2f.o
 
 ifeq ($(CONFIG_FB_MSM_MDDI_AUTO_DETECT),y)
+# SW2-6-MM-JH-SF5_Display_Porting-00+
+obj-y += mddi_toshiba_fwvga.o
+# SW2-6-MM-JH-SF5_Display_Porting-00-
 obj-y += mddi_prism.o
 obj-y += mddi_toshiba.o
 obj-y += mddi_toshiba_vga.o
@@ -87,6 +85,9 @@ obj-y += mddi_sharp.o
 obj-y += mddi_orise.o
 obj-y += mddi_quickvx.o
 else
+# SW2-6-MM-JH-SF5_Display_Porting-00+
+obj-$(CONFIG_FB_MSM_MDDI_TOSHIBA_FWVGA_PORTRAIT) += mddi_toshiba_fwvga_pt.o
+# SW2-6-MM-JH-SF5_Display_Porting-00-
 obj-$(CONFIG_FB_MSM_MDDI_PRISM_WVGA) += mddi_prism.o
 obj-$(CONFIG_FB_MSM_MDDI_TOSHIBA_COMMON) += mddi_toshiba.o
 obj-$(CONFIG_FB_MSM_MDDI_TOSHIBA_COMMON_VGA) += mddi_toshiba_vga.o
@@ -97,17 +98,7 @@ obj-$(CONFIG_FB_MSM_MDDI_ORISE) += mddi_orise.o
 obj-$(CONFIG_FB_MSM_MDDI_QUICKVX) += mddi_quickvx.o
 endif
 
-ifeq ($(CONFIG_FB_MSM_MIPI_PANEL_DETECT),y)
-obj-y += mipi_toshiba_video_wvga_pt.o mipi_novatek_video_qhd_pt.o
-obj-y += mipi_toshiba_video_wvga_pt.o mipi_novatek_video_qhd_pt.o mipi_novatek_cmd_qhd_pt.o
-else
 obj-$(CONFIG_FB_MSM_MIPI_TOSHIBA_VIDEO_WVGA_PT) += mipi_toshiba_video_wvga_pt.o
-obj-$(CONFIG_FB_MSM_MIPI_NOVATEK_VIDEO_QHD_PT) += mipi_novatek_video_qhd_pt.o
-obj-$(CONFIG_FB_MSM_MIPI_NOVATEK_CMD_QHD_PT) += mipi_novatek_cmd_qhd_pt.o
-endif
-
-
-
 
 obj-$(CONFIG_FB_MSM_LCDC_PANEL) += lcdc_panel.o
 obj-$(CONFIG_FB_MSM_LCDC_PRISM_WVGA) += lcdc_prism.o
@@ -121,15 +112,14 @@ obj-$(CONFIG_FB_MSM_LCDC_SHARP_WVGA_PT) += lcdc_sharp_wvga_pt.o
 # SW2-6-MM-JH-SF8_Display_Porting-00+
 obj-$(CONFIG_FB_MSM_LCDC_SONY_WVGA_PT) += lcdc_sony_wvga_pt.o
 # SW2-6-MM-JH-SF8_Display_Porting-00-
-obj-$(CONFIG_FB_MSM_LCDC_SAMSUNG_OLED_PT) += lcdc_samsung_oled_pt.o
 obj-$(CONFIG_FB_MSM_HDMI_ADV7520_PANEL) += adv7520.o
 obj-$(CONFIG_FB_MSM_HDMI_ADV7525_PANEL) += adv7525.o
 obj-$(CONFIG_FB_MSM_LCDC_ST15_WXGA) += lcdc_st15.o
-obj-$(CONFIG_FB_MSM_LCDC_QRDC_WXGA) += lcdc_qrdc.o
 obj-$(CONFIG_FB_MSM_HDMI_MSM_PANEL) += hdmi_msm.o
-obj-$(CONFIG_FB_MSM_EXT_INTERFACE_COMMON) += external_common.o
+obj-$(CONFIG_FB_MSM_HDMI_COMMON) += hdmi_common.o
 
-obj-$(CONFIG_FB_MSM_TVOUT) += tvout_msm.o
+obj-$(CONFIG_FB_MSM_TVOUT_NTSC) += tvout_msm.o
+obj-$(CONFIG_FB_MSM_TVOUT_PAL) += tvout_msm.o
 
 obj-$(CONFIG_FB_MSM_EXTMDDI_SVGA) += mddi_ext_lcd.o
 

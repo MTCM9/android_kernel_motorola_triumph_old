@@ -920,9 +920,10 @@ static u32 vcd_set_dev_pwr_in_ready
 	switch (pwr_state) {
 	case VCD_PWR_STATE_SLEEP:
 		{
-			if (dev_ctxt->pwr_state == VCD_PWR_STATE_ON)
-				vcd_pause_all_sessions(dev_ctxt);
+			vcd_pause_all_sessions(dev_ctxt);
+
 			dev_ctxt->pwr_state = VCD_PWR_STATE_SLEEP;
+
 			break;
 		}
 

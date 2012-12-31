@@ -159,11 +159,7 @@
 #define MSM_PMEM_SF_SIZE    0x1E00000   //0x1700000
 /* } FIHTDC, Div2-SW2-BSP, Ming, PMEM */
 /* FIHTDC, Div2-SW2-BSP SungSCLee, HDMI { */
-#ifdef CONFIG_FB_MSM_HDMI_ADV7520_PANEL
-#define MSM_FB_SIZE		0x500000
-#else
 #define MSM_FB_SIZE		0xA00000       ///0x500000
-#endif
 /* } FIHTDC, Div2-SW2-BSP SungSCLee, HDMI */
 #define MSM_PMEM_ADSP_SIZE      0x2000000  //SW2-5-CL-Camera-720P-00*
 #define MSM_FLUID_PMEM_ADSP_SIZE	0x2800000
@@ -176,10 +172,7 @@
 #define PMIC_GPIO_SDC4_EN	17  /* PMIC GPIO Number 18 */
 /* FIHTDC, Div2-SW2-BSP SungSCLee, HDMI { */
 #ifdef CONFIG_FB_MSM_HDMI_ADV7520_PANEL
-#define PMIC_GPIO_HDMI_5V_EN_V3 32  /* PMIC GPIO for V3 H/W */
-#define PMIC_GPIO_HDMI_5V_EN_V2 39 /* PMIC GPIO for V2 H/W */
-
-#define ADV7520_I2C_ADDR	0x39
+#define PMIC_GPIO_HDMI_5V_EN	39  /* PMIC GPIO Number 40 */
 #endif
 
 //DIV5-CONN-MW-POWER SAVING MODE-01*[
@@ -222,9 +215,6 @@ static bool hdmi_init_done = false;
 #define PMIC_GPIO_FLASH_BOOST_ENABLE	15	/* PMIC GPIO Number 16 */
 #define PMIC_GPIO_HAP_ENABLE   16  /* PMIC GPIO Number 17 */
 
-
-#define BMA150_GPIO_INT 1
-
 #define HAP_LVL_SHFT_MSM_GPIO 24
 
 #define PMIC_GPIO_QUICKVX_CLK 37 /* PMIC GPIO 38 */
@@ -242,72 +232,6 @@ static bool hdmi_init_done = false;
 //Div2-SW2-CONN-JC-SF5_BT_Clock-00+}
 
 //MM-SL-OPControl-00+{
-// DIV2-SW2-BSP-FBx-BUTTONS+
-#ifdef CONFIG_KEYBOARD_GPIO
-#define PM_GPIO_CAMF	1
-#define PM_GPIO_CAMT	2
-#define PM_GPIO_VOLUP	3
-#define PM_GPIO_VOLDN	4
-
-#define KEY_NUM					4
-#define KEY_FOCUS 				KEY_F13
-#define KEY_DEBOUNCE_INTERVAL   2 // ms
-
-static struct gpio_keys_button gpio_buttons[KEY_NUM] = { 
-	{
-		.code			= KEY_VOLUMEUP,
-		.gpio			= PM8058_GPIO_PM_TO_SYS(PM_GPIO_VOLUP),
-		.active_low		= 0,
-		.desc			= "Vol Up Key",
-		.type			= EV_KEY,
-		.wakeup			= 0,
-		.debounce_interval = KEY_DEBOUNCE_INTERVAL	
-	}, 
-	{	
-		.code			= KEY_VOLUMEDOWN,
-		.gpio			= PM8058_GPIO_PM_TO_SYS(PM_GPIO_VOLDN),
-		.active_low		= 0,
-		.desc			= "Vol Dn Key",
-		.type			= EV_KEY,
-		.wakeup			= 0,
-		.debounce_interval = KEY_DEBOUNCE_INTERVAL
-	},
-	{
-		.code			= KEY_FOCUS,
-		.gpio			= PM8058_GPIO_PM_TO_SYS(PM_GPIO_CAMF),
-		.active_low		= 0,
-		.desc			= "Focus Key",
-		.type			= EV_KEY,
-		.wakeup			= 0,
-		.debounce_interval = KEY_DEBOUNCE_INTERVAL
-	}, 
-	{
-		.code			= KEY_CAMERA,
-		.gpio			= PM8058_GPIO_PM_TO_SYS(PM_GPIO_CAMT),
-		.active_low		= 0,
-		.desc			= "Camera Key",
-		.type			= EV_KEY,
-		.wakeup			= 0,
-		.debounce_interval = KEY_DEBOUNCE_INTERVAL
-	},
-};
-
-static struct gpio_keys_platform_data gpio_buttons_pdata = {
-	.buttons 	= gpio_buttons,
-	.nbuttons 	= KEY_NUM - 2,
-	.rep		= 0
-};
-
-static struct platform_device gpio_buttons_device = {
-    .name   = "gpio-keys",
-    .id     = -1,
-    .dev    = {
-                .platform_data = &gpio_buttons_pdata,
-            },
-};
-#endif
-// DIV2-SW2-BSP-FBx-BUTTONS-
-
 bool m_HsAmpOn=false;
 bool m_SpkAmpOn=false; 
 //MM-SL-OPControl-00+}
@@ -330,14 +254,21 @@ static int pm8058_gpios_init(void)
 #endif
 	struct pm8058_gpio sdc4_en = {
 		.direction      = PM_GPIO_DIR_OUT,
-		.pull           = PM_GPIO_PULL_NO,
-		.vin_sel        = PM_GPIO_VIN_L5,
+		.pull           = PM_GPIO_PULL_UP_1P5,
+		.vin_sel        = 2,
 		.function       = PM_GPIO_FUNC_NORMAL,
 		.inv_int_pol    = 0,
-		.out_strength   = PM_GPIO_STRENGTH_LOW,
-		.output_value   = 0,
 	};
 #endif
+    /* FIHTDC, Div2-SW2-BSP, Ming, LCM { */
+    struct pm8058_gpio lcm_v1p8_en ={
+         .direction        = PM_GPIO_DIR_OUT,         //Let the pin be an output one.
+         .output_buffer    = PM_GPIO_OUT_BUF_CMOS,    //HW suggestion
+         .output_value     = 1,                       //You also can set 0, but it seems useless.
+         .out_strength     = PM_GPIO_STRENGTH_HIGH,   //There are three options for this, LOW, MED, and HIGH, but I don!|t know the actual effect.
+         .function         = PM_GPIO_FUNC_NORMAL,     //Let the pin be a general GPIO.
+    };
+    /* } FIHTDC, Div2-SW2-BSP, Ming, LCM */
 	struct pm8058_gpio haptics_enable = {
 		.direction      = PM_GPIO_DIR_OUT,
 		.pull           = PM_GPIO_PULL_NO,
@@ -356,8 +287,6 @@ static int pm8058_gpios_init(void)
 		.pull           = PM_GPIO_PULL_NO,
 		.vin_sel        = PM_GPIO_VIN_VPH,
 		.function       = PM_GPIO_FUNC_NORMAL,
-		.out_strength   = PM_GPIO_STRENGTH_LOW,
-		.output_value   = 0,
 	};
 #endif
 #ifdef CONFIG_FB_MSM_HDMI_ADV7525_PANEL
@@ -370,16 +299,7 @@ static int pm8058_gpios_init(void)
         .function       = PM_GPIO_FUNC_NORMAL,
     };
 #endif    
-/* } FIHTDC, Div2-SW2-BSP SungSCLee, HDMI */	
-	/* FIHTDC, Div2-SW2-BSP, Ming, LCM { */
-    struct pm8058_gpio lcm_v1p8_en ={
-         .direction        = PM_GPIO_DIR_OUT,         //Let the pin be an output one.
-         .output_buffer    = PM_GPIO_OUT_BUF_CMOS,    //HW suggestion
-         .output_value     = 1,                       //You also can set 0, but it seems useless.
-         .out_strength     = PM_GPIO_STRENGTH_HIGH,   //There are three options for this, LOW, MED, and HIGH, but I don!|t know the actual effect.
-         .function         = PM_GPIO_FUNC_NORMAL,     //Let the pin be a general GPIO.
-    };
-    /* } FIHTDC, Div2-SW2-BSP, Ming, LCM */
+/* } FIHTDC, Div2-SW2-BSP SungSCLee, HDMI */
 
 	struct pm8058_gpio flash_boost_enable = {
 		.direction      = PM_GPIO_DIR_OUT,
@@ -683,12 +603,8 @@ static int cyttsp_platform_resume(struct i2c_client *client)
 }
 
 static struct cyttsp_platform_data cyttsp_data = {
-	.panel_maxx = 479,
-	.panel_maxy = 799,
-	.disp_maxx = 469,
-	.disp_maxy = 799,
-	.disp_minx = 10,
-	.disp_miny = 0,
+	.maxx = 479,
+	.maxy = 799,
 	.flags = 0,
 	.gen = CY_GEN3,	/* or */
 	.use_st = CY_USE_ST,
@@ -1976,7 +1892,6 @@ void camera_sensor_hwpin_init(void)
     phid = fih_get_product_phase();
 
 #ifdef CONFIG_FIH_MT9P111
-#if 1
     if (pid == Product_SF5) 
     {
         /* Declare for camea pins */
@@ -2067,7 +1982,6 @@ void camera_sensor_hwpin_init(void)
         msm_camera_sensor_mt9p111_data.fast_af_retest_target = 0x2000;
     }
     else// For FBx and FDx series project
-    #endif
     {
         /* Declare for camea pins */
         msm_camera_sensor_mt9p111_data.rst_pin = 1;
@@ -2092,7 +2006,6 @@ void camera_sensor_hwpin_init(void)
         msm_camera_sensor_mt9p111_data.flash_second_waittime = 200;
         /*Fast AF*/
         msm_camera_sensor_mt9p111_data.fast_af_retest_target = 0x2000;
-        #if 1
         if(pid ==Product_FD1 )
         {
             msm_camera_sensor_mt9p111_data.flash_target = 0x7D0;
@@ -2104,14 +2017,12 @@ void camera_sensor_hwpin_init(void)
             msm_camera_sensor_mt9p111_data.torch_light = 0x3E;
             msm_camera_sensor_mt9p111_data.preflash_light=0x3E;
         }
-        #endif
     }
 
 #endif
 
 #ifdef CONFIG_FIH_HM0356
     /*Setting camera pins */
-#if 1
     if (IS_SF8_SERIES_PRJ())
     {
         if (pid == Product_SF8 && phid < Product_PR2)
@@ -2143,7 +2054,6 @@ void camera_sensor_hwpin_init(void)
         msm_camera_sensor_hm0356_data.cam_vreg_acore_id = "gp10";
     }
     else// For FBx and FDx series project
-        #endif
     {
         msm_camera_sensor_hm0356_data.rst_pin = 1;
         msm_camera_sensor_hm0356_data.pwdn_pin = 2;
@@ -2155,7 +2065,6 @@ void camera_sensor_hwpin_init(void)
 #endif
 #ifdef CONFIG_FIH_HM0357
     /*Setting camera pins */
-#if 1
     if (IS_SF8_SERIES_PRJ())
     {
         if (pid == Product_SF8 && phid < Product_PR2)
@@ -2195,7 +2104,6 @@ void camera_sensor_hwpin_init(void)
         msm_camera_sensor_hm0357_data.vga_power_en_pin = 98;
     }
     else// For FBx and FDx series project
-        #endif
     {
         msm_camera_sensor_hm0357_data.rst_pin = 1;
         msm_camera_sensor_hm0357_data.pwdn_pin = 2;
@@ -2205,7 +2113,7 @@ void camera_sensor_hwpin_init(void)
         msm_camera_sensor_hm0357_data.cam_vreg_acore_id = "gp10";
     }
 #endif
-#if 1
+
 #ifdef CONFIG_FIH_TCM9001MD
     if (pid  == Product_SF5)
     {
@@ -2244,7 +2152,7 @@ void camera_sensor_hwpin_init(void)
         msm_camera_sensor_tcm9001md_data.vga_power_en_pin = 98;
     }
 #endif
-#endif
+
 }
 //Div2-SW6-MM-MC-FixCameraCurrentLeakage-02*}
 
@@ -2671,19 +2579,6 @@ static int __init buses_init(void)
 }
 
 #define TIMPANI_RESET_GPIO	1
-
-struct bahama_config_register{
-	u8 reg;
-	u8 value;
-	u8 mask;
-};
-
-enum version{
-	VER_1_0,
-	VER_2_0,
-	VER_UNSUPPORTED = 0xFF
-};
-
 
 static struct vreg *vreg_marimba_1;
 static struct vreg *vreg_marimba_2;
@@ -4114,21 +4009,8 @@ static struct ofn_atlab_platform_data optnav_data = {
 };
 
 #ifdef CONFIG_FB_MSM_HDMI_ADV7520_PANEL
-static int hdmi_comm_power(int on, int show);
-static int hdmi_init_irq(void);
-static int hdmi_enable_5v(int on);
-static int hdmi_core_power(int on, int show);
-static int hdmi_cec_power(int on);
-static bool hdmi_check_hdcp_hw_support(void);
-
 static struct msm_hdmi_platform_data adv7520_hdmi_data = {
-	.irq = MSM_GPIO_TO_INT(18),
-	.comm_power = hdmi_comm_power,
-	.init_irq = hdmi_init_irq,
-	.enable_5v = hdmi_enable_5v,
-	.core_power = hdmi_core_power,
-	.cec_power = hdmi_cec_power,
-	.check_hdcp_hw_support = hdmi_check_hdcp_hw_support,
+		.irq = MSM_GPIO_TO_INT(18),
 };
 #endif
 
@@ -4194,7 +4076,7 @@ static struct i2c_board_info msm_i2c_board_info[] = {
 	},
 #ifdef CONFIG_FB_MSM_HDMI_ADV7520_PANEL
 	{
-		I2C_BOARD_INFO("adv7520", ADV7520_I2C_ADDR),
+		I2C_BOARD_INFO("adv7520", 0x72 >> 1),
 		.platform_data = &adv7520_hdmi_data,
 	},
 #endif
@@ -4859,13 +4741,7 @@ static struct platform_device lcdc_sharp_panel_device = {
 };
 #endif
 //SW2-6-MM-JH-Unused_Display_Codes-00-
-/* FIHTDC, Div2-SW2-BSP SungSCLee, HDMI { */
-#ifdef CONFIG_FB_MSM_HDMI_ADV7520_PANEL
-static struct msm_gpio dtv_panel_irq_gpios[] = {
-	{ GPIO_CFG(18, 0, GPIO_CFG_INPUT,  GPIO_CFG_NO_PULL, GPIO_CFG_4MA),
-		"hdmi_int" },
-};
-#endif	
+
 #ifdef CONFIG_FB_MSM_HDMI_ADV7525_PANEL 	
 static struct msm_gpio hdmi_panel_gpios[] = {
     { GPIO_CFG(34, 1, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_4MA), "hdmi_5v_en" },   
@@ -4875,6 +4751,9 @@ static struct msm_gpio hdmi_panel_gpios[] = {
 
 #if defined(CONFIG_FB_MSM_HDMI_ADV7525_PANEL) || defined(CONFIG_FB_MSM_HDMI_ADV7520_PANEL) 
 static struct msm_gpio dtv_panel_gpios[] = {
+#ifdef CONFIG_FB_MSM_HDMI_ADV7520_PANEL
+	{ GPIO_CFG(18, 0, GPIO_CFG_INPUT,  GPIO_CFG_NO_PULL, GPIO_CFG_4MA), "hdmi_int" },
+#endif
 	{ GPIO_CFG(120, 1, GPIO_CFG_OUTPUT,  GPIO_CFG_NO_PULL, GPIO_CFG_4MA), "wca_mclk" },
 	{ GPIO_CFG(121, 1, GPIO_CFG_OUTPUT,  GPIO_CFG_NO_PULL, GPIO_CFG_4MA), "wca_sd0" },
 	{ GPIO_CFG(122, 1, GPIO_CFG_OUTPUT,  GPIO_CFG_NO_PULL, GPIO_CFG_4MA), "wca_sd1" },
@@ -5252,80 +5131,110 @@ static struct platform_device android_pmem_audio_device = {
        .dev = { .platform_data = &android_pmem_audio_pdata },
 };
 
-static struct kgsl_platform_data kgsl_pdata = {
-#ifdef CONFIG_MSM_NPA_SYSTEM_BUS
-	/* NPA Flow IDs */
-	.high_axi_3d = MSM_AXI_FLOW_3D_GPU_HIGH,
-	.high_axi_2d = MSM_AXI_FLOW_2D_GPU_HIGH,
-#else
-	/* AXI rates in KHz */
-	.high_axi_3d = 192000,
-	.high_axi_2d = 192000,
-#endif
-	.max_grp2d_freq = 0,
-	.min_grp2d_freq = 0,
-	.set_grp2d_async = NULL, /* HW workaround, run Z180 SYNC @ 192 MHZ */
-	.max_grp3d_freq = 245760000,
-	.min_grp3d_freq = 192 * 1000*1000,
-	.set_grp3d_async = set_grp3d_async,
-	.imem_clk_name = "imem_clk",
-	.grp3d_clk_name = "grp_clk",
-	.grp3d_pclk_name = "grp_pclk",
-#ifdef CONFIG_MSM_KGSL_2D
-	.grp2d0_clk_name = "grp_2d_clk",
-	.grp2d0_pclk_name = "grp_2d_pclk",
-#else
-	.grp2d0_clk_name = NULL,
-#endif
-	.idle_timeout_3d = HZ/20,
-	.idle_timeout_2d = HZ/10,
-	.nap_allowed = true,
-
-#ifdef CONFIG_KGSL_PER_PROCESS_PAGE_TABLE
-	.pt_va_size = SZ_32M,
-	/* Maximum of 32 concurrent processes */
-	.pt_max_count = 32,
-#else
-	.pt_va_size = SZ_128M,
-	/* We only ever have one pagetable for everybody */
-	.pt_max_count = 1,
-#endif
-};
-
-static struct resource kgsl_resources[] = {
+struct resource kgsl_3d0_resources[] = {
 	{
-		.name = "kgsl_reg_memory",
+		.name  = KGSL_3D0_REG_MEMORY,
 		.start = 0xA3500000, /* 3D GRP address */
 		.end = 0xA351ffff,
 		.flags = IORESOURCE_MEM,
 	},
 	{
-		.name = "kgsl_yamato_irq",
+		.name = KGSL_3D0_IRQ,
 		.start = INT_GRP_3D,
 		.end = INT_GRP_3D,
 		.flags = IORESOURCE_IRQ,
 	},
+};
+
+static struct kgsl_device_platform_data kgsl_3d0_pdata = {
+	.pwr_data = {
+		.pwrlevel = {
+			{
+				.gpu_freq = 245760000,
+				.bus_freq = 192000000,
+			},
+			{
+				.gpu_freq = 192000000,
+				.bus_freq = 152000000,
+			},
+			{
+				.gpu_freq = 192000000,
+				.bus_freq = 0,
+			},
+		},
+		.init_level = 0,
+		.num_levels = 3,
+		.set_grp_async = set_grp3d_async,
+		.idle_timeout = HZ/20,
+		.nap_allowed = true,
+	},
+	.clk = {
+		.name = {
+			.clk = "grp_clk",
+			.pclk = "grp_pclk",
+		},
+	},
+	.imem_clk_name = {
+		.clk = "imem_clk",
+		.pclk = NULL,
+	},
+};
+
+struct platform_device msm_kgsl_3d0 = {
+	.name = "kgsl-3d0",
+	.id = 0,
+	.num_resources = ARRAY_SIZE(kgsl_3d0_resources),
+	.resource = kgsl_3d0_resources,
+	.dev = {
+		.platform_data = &kgsl_3d0_pdata,
+	},
+};
+
+static struct resource kgsl_2d0_resources[] = {
 	{
-		.name = "kgsl_2d0_reg_memory",
+		.name = KGSL_2D0_REG_MEMORY,
 		.start = 0xA3900000, /* Z180 base address */
 		.end = 0xA3900FFF,
 		.flags = IORESOURCE_MEM,
 	},
 	{
-		.name  = "kgsl_2d0_irq",
+		.name = KGSL_2D0_IRQ,
 		.start = INT_GRP_2D,
 		.end = INT_GRP_2D,
 		.flags = IORESOURCE_IRQ,
 	},
 };
 
-static struct platform_device msm_device_kgsl = {
-	.name = "kgsl",
-	.id = -1,
-	.num_resources = ARRAY_SIZE(kgsl_resources),
-	.resource = kgsl_resources,
+static struct kgsl_device_platform_data kgsl_2d0_pdata = {
+	.pwr_data = {
+		.pwrlevel = {
+			{
+				.gpu_freq = 0,
+				.bus_freq = 192000000,
+			},
+		},
+		.init_level = 0,
+		.num_levels = 1,
+		/* HW workaround, run Z180 SYNC @ 192 MHZ */
+		.set_grp_async = NULL,
+		.idle_timeout = HZ/10,
+		.nap_allowed = true,
+	},
+	.clk = {
+		.name = {
+			.clk = "grp_2d_clk",
+			.pclk = "grp_2d_pclk",
+		},
+	},
+};
+
+struct platform_device msm_kgsl_2d0 = {
+	.name = "kgsl-2d0",
+	.id = 0,
+	.num_resources = ARRAY_SIZE(kgsl_2d0_resources),
+	.resource = kgsl_2d0_resources,
 	.dev = {
-		.platform_data = &kgsl_pdata,
+		.platform_data = &kgsl_2d0_pdata,
 	},
 };
 
@@ -5547,16 +5456,6 @@ static int display_common_power(int on)
 
 }
 
-#endif // CONFIG_FIH_LCDC_TOSHIBA_WVGA_PT 
-#if 0
-static unsigned wega_reset_gpio =
-	GPIO_CFG(180, 0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA);
-
-static struct msm_gpio fluid_vee_reset_gpio[] = {
-	{ GPIO_CFG(20, 0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA), "vee_reset" },
-};
-#endif
-
 static unsigned char quickvx_mddi_client = 1;
 
 #if 0
@@ -5574,7 +5473,16 @@ static struct pm8058_gpio pmic_quickvx_clk_gpio = {
 };
 #endif
 
+#else // CONFIG_FIH_LCDC_TOSHIBA_WVGA_PT 
+//SW2-6-MM-JH-Unused_Display_Codes-00+
 #if 0
+static unsigned wega_reset_gpio =
+	GPIO_CFG(180, 0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA);
+
+static struct msm_gpio fluid_vee_reset_gpio[] = {
+	{ GPIO_CFG(20, 0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA), "vee_reset" },
+};
+
 static int display_common_power(int on)
 {
 	int rc = 0, flag_on = !!on;
@@ -5859,8 +5767,12 @@ static int display_common_power(int on)
 
 	return rc;
 }
-#endif //
+#endif
+//SW2-6-MM-JH-Unused_Display_Codes-00-
+#endif // CONFIG_FIH_LCDC_TOSHIBA_WVGA_PT 
 
+//SW2-6-MM-JH-Display_Flag-00+
+#ifdef CONFIG_FB_MSM_MDDI
 static int msm_fb_mddi_sel_clk(u32 *clk_rate)
 {
 	*clk_rate *= 2;
@@ -5908,13 +5820,8 @@ static struct mddi_platform_data mddi_pdata = {
 	.mddi_sel_clk = msm_fb_mddi_sel_clk,
 	.mddi_client_power = msm_fb_mddi_client_power,
 };
-
-int mdp_core_clk_rate_table[] = {
-	122880000,
-	122880000,
-	192000000,
-	192000000,
-};
+#endif // CONFIG_FB_MSM_MDDI
+//SW2-6-MM-JH-Display_Flag-00-
 
 static struct msm_panel_common_pdata mdp_pdata = {
 	.hw_revision_addr = 0xac001270,
@@ -5924,8 +5831,6 @@ static struct msm_panel_common_pdata mdp_pdata = {
 #endif
 /* } Div2-SW2-BSP-FBX-LEDS */
 	.mdp_core_clk_rate = 122880000,
-	.mdp_core_clk_table = mdp_core_clk_rate_table,
-	.num_mdp_clk = ARRAY_SIZE(mdp_core_clk_rate_table),
 };
 
 /* FIHTDC, Div2-SW2-BSP, Ming, LCM { */
@@ -6296,8 +6201,14 @@ static struct tvenc_platform_data atv_pdata = {
 static void __init msm_fb_add_devices(void)
 {
 	msm_fb_register_device("mdp", &mdp_pdata);
+//SW2-6-MM-JH-Display_Flag-00+
+#ifdef CONFIG_FB_MSM_MDDI
 	msm_fb_register_device("pmdh", &mddi_pdata);
+#endif
+#ifdef CONFIG_FB_MSM_LCDC
 	msm_fb_register_device("lcdc", &lcdc_pdata);
+#endif
+//SW2-6-MM-JH-Display_Flag-00-
 #if defined(CONFIG_FB_MSM_HDMI_ADV7525_PANEL) || defined(CONFIG_FB_MSM_HDMI_ADV7520_PANEL) 	
 	msm_fb_register_device("dtv", &dtv_pdata);
 #endif	
@@ -6360,9 +6271,7 @@ static struct msm_gpio bt_config_power_on[] = {
     { GPIO_CFG(GPIO_BTUART_RFR, 1, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL,  GPIO_CFG_2MA), "UART1DM_RFR" },
     { GPIO_CFG(GPIO_BTUART_CTS, 1, GPIO_CFG_INPUT,  GPIO_CFG_NO_PULL,  GPIO_CFG_2MA), "UART1DM_CTS" },
     { GPIO_CFG(GPIO_BTUART_RX,  1, GPIO_CFG_INPUT,  GPIO_CFG_NO_PULL,  GPIO_CFG_2MA), "UART1DM_RX" },
-    { GPIO_CFG(GPIO_BTUART_TX,  1, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL,  GPIO_CFG_2MA), "UART1DM_TX" },
-    { GPIO_CFG(GPIO_BT_IRQ,     0, GPIO_CFG_INPUT,  GPIO_CFG_NO_PULL,  GPIO_CFG_2MA), "BT_HOST_WAKE" },
-    { GPIO_CFG(GPIO_BT_WAKEUP,  0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL,  GPIO_CFG_2MA), "BT_WAKE" }
+    { GPIO_CFG(GPIO_BTUART_TX,  1, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL,  GPIO_CFG_2MA), "UART1DM_TX" }
 };
 
 static struct msm_gpio bt_config_power_off[] = {
@@ -6370,9 +6279,7 @@ static struct msm_gpio bt_config_power_off[] = {
     { GPIO_CFG(GPIO_BTUART_RFR, 0, GPIO_CFG_INPUT,  GPIO_CFG_PULL_DOWN,  GPIO_CFG_2MA), "UART1DM_RFR" },
     { GPIO_CFG(GPIO_BTUART_CTS, 0, GPIO_CFG_INPUT,  GPIO_CFG_PULL_DOWN,  GPIO_CFG_2MA), "UART1DM_CTS" },
     { GPIO_CFG(GPIO_BTUART_RX,  0, GPIO_CFG_INPUT,  GPIO_CFG_PULL_DOWN,  GPIO_CFG_2MA), "UART1DM_RX" },
-    { GPIO_CFG(GPIO_BTUART_TX,  0, GPIO_CFG_INPUT,  GPIO_CFG_PULL_DOWN,  GPIO_CFG_2MA), "UART1DM_TX" },
-    { GPIO_CFG(GPIO_BT_IRQ,     0, GPIO_CFG_INPUT,  GPIO_CFG_PULL_DOWN,  GPIO_CFG_2MA), "BT_HOST_WAKE" },
-    { GPIO_CFG(GPIO_BT_WAKEUP,  0, GPIO_CFG_INPUT,  GPIO_CFG_PULL_DOWN,  GPIO_CFG_2MA), "BT_WAKE" }
+    { GPIO_CFG(GPIO_BTUART_TX,  0, GPIO_CFG_INPUT,  GPIO_CFG_PULL_DOWN,  GPIO_CFG_2MA), "UART1DM_TX" }
 };
 
 static int bluetooth_power(int on)
@@ -7411,9 +7318,9 @@ static struct platform_device *devices[] __initdata = {
 	&bcm4329_fm_power_device,
 #endif
 // FIHTDC-SW2-Div6-CW-Project BCM4329 BLUETOOTH driver For SF8 +]
-// FihtdcCode@20110908 WeiChu add for WiFi porting end
-	&msm_device_kgsl,
-
+	&msm_kgsl_3d0,
+	&msm_kgsl_2d0,
+//Div2-SW6-MM-HL-Camera-BringUp-00+{
 #ifdef CONFIG_FIH_MT9P111
         &msm_camera_sensor_mt9p111,
 #endif
@@ -9511,8 +9418,6 @@ static struct cy8c_ts_platform_data cy8ctma300_pdata = {
 	.use_polling = 1,
 	.invert_y = 1,
 	.nfingers = 4,
-	.irq_gpio = TS_GPIO_IRQ,
-	.resout_gpio = -1,
 };
 
 static struct i2c_board_info cy8ctma300_board_info[] = {
@@ -9615,23 +9520,21 @@ static void __init msm7x30_init(void)
 	int cnt = 0;
 	int camera_num = 0;
 	//SW5-Multimedia-TH-MT9P111forV6-00+}
-	unsigned smem_size;
 	uint32_t usb_hub_gpio_cfg_value = GPIO_CFG(56,
 						0,
 						GPIO_CFG_OUTPUT,
 						GPIO_CFG_NO_PULL,
 						GPIO_CFG_2MA);
 	uint32_t soc_version = 0;
-
+						
+	fih_get_oem_info(); //KC-OEMInfo-00+
+	fih_get_host_oem_info(); // SW2-5-1-MP-HostOemInfo-00+
+  
 	if (socinfo_init() < 0)
 		printk(KERN_ERR "%s: socinfo_init() failed!\n",
 		       __func__);
 
 	soc_version = socinfo_get_version();
-
-	//Div2-SW2-BSP,JOE HSU
-  	fih_get_oem_info(); 
-  	fih_get_host_oem_info(); // SW2-5-1-MP-HostOemInfo-00+
 
 	msm_clock_init(msm_clocks_7x30, msm_num_clocks_7x30);
 #ifdef CONFIG_SERIAL_MSM_CONSOLE
@@ -9832,10 +9735,6 @@ static void __init msm7x30_init(void)
 				__func__, usb_hub_gpio_cfg_value, rc);
 	}
 
-	boot_reason = *(unsigned int *)
-		(smem_get_entry(SMEM_POWER_ON_STATUS_INFO, &smem_size));
-	printk(KERN_NOTICE "Boot Reason = 0x%02x\n", boot_reason);
-	
 //Div2-SW2-BSP,JOE HSU,+++
 //#ifdef CONFIG_FIH_CONFIG_GROUP
     /*call product id functions for init verification*/
@@ -9855,36 +9754,32 @@ static void __init msm7x30_init(void)
 }
 
 static unsigned pmem_sf_size = MSM_PMEM_SF_SIZE;
-static int __init pmem_sf_size_setup(char *p)
+static void __init pmem_sf_size_setup(char **p)
 {
-	pmem_sf_size = memparse(p, NULL);
-	return 0;
+	pmem_sf_size = memparse(*p, p);
 }
-early_param("pmem_sf_size", pmem_sf_size_setup);
+__early_param("pmem_sf_size=", pmem_sf_size_setup);
 
 static unsigned fb_size = MSM_FB_SIZE;
-static int __init fb_size_setup(char *p)
+static void __init fb_size_setup(char **p)
 {
-	fb_size = memparse(p, NULL);
-	return 0;
+	fb_size = memparse(*p, p);
 }
-early_param("fb_size", fb_size_setup);
+__early_param("fb_size=", fb_size_setup);
 
 static unsigned pmem_adsp_size = MSM_PMEM_ADSP_SIZE;
-static int __init pmem_adsp_size_setup(char *p)
+static void __init pmem_adsp_size_setup(char **p)
 {
-	pmem_adsp_size = memparse(p, NULL);
-	return 0;
+	pmem_adsp_size = memparse(*p, p);
 }
-early_param("pmem_adsp_size", pmem_adsp_size_setup);
+__early_param("pmem_adsp_size=", pmem_adsp_size_setup);
 
 static unsigned fluid_pmem_adsp_size = MSM_FLUID_PMEM_ADSP_SIZE;
-static int __init fluid_pmem_adsp_size_setup(char *p)
+static void __init fluid_pmem_adsp_size_setup(char **p)
 {
-	fluid_pmem_adsp_size = memparse(p, NULL);
-	return 0;
+	fluid_pmem_adsp_size = memparse(*p, p);
 }
-early_param("fluid_pmem_adsp_size", fluid_pmem_adsp_size_setup);
+__early_param("fluid_pmem_adsp_size=", fluid_pmem_adsp_size_setup);
 
 static unsigned pmem_audio_size = MSM_PMEM_AUDIO_SIZE;
 static int __init pmem_audio_size_setup(char *p)
@@ -9895,12 +9790,11 @@ static int __init pmem_audio_size_setup(char *p)
 early_param("pmem_audio_size", pmem_audio_size_setup);
 
 static unsigned pmem_kernel_ebi1_size = PMEM_KERNEL_EBI1_SIZE;
-static int __init pmem_kernel_ebi1_size_setup(char *p)
+static void __init pmem_kernel_ebi1_size_setup(char **p)
 {
-	pmem_kernel_ebi1_size = memparse(p, NULL);
-	return 0;
+	pmem_kernel_ebi1_size = memparse(*p, p);
 }
-early_param("pmem_kernel_ebi1_size", pmem_kernel_ebi1_size_setup);
+__early_param("pmem_kernel_ebi1_size=", pmem_kernel_ebi1_size_setup);
 
 static void __init msm7x30_allocate_memory_regions(void)
 {
@@ -10021,7 +9915,7 @@ MACHINE_START(MSM8X55_SURF, "QCT MSM8X55 SURF")
 	.timer = &msm_timer,
 MACHINE_END
 
-MACHINE_START(MSM8X55_FFA, "FB0")
+MACHINE_START(MSM8X55_FFA, "TRIUMPH")
 #ifdef CONFIG_MSM_DEBUG_UART
 	.phys_io  = MSM_DEBUG_UART_PHYS,
 	.io_pg_offst = ((MSM_DEBUG_UART_BASE) >> 18) & 0xfffc,

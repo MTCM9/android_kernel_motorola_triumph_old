@@ -1,4 +1,4 @@
-/* Copyright (c) 2009-2010, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2009, Code Aurora Forum. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -23,16 +23,15 @@
 #endif
 #include <mach/gpio.h>
 #include <mach/pmic.h>
+#include <mach/vreg.h> // FIHTDC, Ming, LCM
 #include <mach/msm_iomap.h> // FIHTDC-Div2-SW2-BSP, Ming, LCM
 #include <linux/clk.h>    // FIHTDC-Div2-SW2-BSP, Ming, LCM
 #include "msm_fb.h"
-
-#define LCDC_TRULY_WVGA_PT  // for 2nd source Truly panel
+#include "../../../arch/arm/mach-msm/smd_private.h" // FIHTDC-Div2-SW2-BSP, Ming, HWID
 
 #ifdef CONFIG_FB_MSM_TRY_MDDI_CATCH_LCDC_PRISM
 #include "mddihosti.h"
 #endif
-
 #ifdef CONFIG_SPI_QSD
 #define LCDC_TOSHIBA_SPI_DEVICE_NAME "lcdc_toshiba_ltm030dd40"
 static struct spi_device *lcdc_toshiba_spi_client;
@@ -48,18 +47,37 @@ struct toshiba_state_type{
 	boolean disp_powered_up;
 };
 
-static struct toshiba_state_type toshiba_state = { 0 };
+/* FIHTDC, Div2-SW2-BSP, Ming { */
+// Already done in APPSBOOT.
+//static struct toshiba_state_type toshiba_state = { .disp_initialized = FALSE, .display_on = TRUE, .disp_powered_up = TRUE }; ///{ 0 };
+static struct toshiba_state_type toshiba_state = {0};
+/* } FIHTDC, Div2-SW2-BSP, Ming */
+
 static struct msm_panel_common_pdata *lcdc_toshiba_pdata;
+
 static struct clk *gp_clk;  // FIHTDC-Div2-SW2-BSP, Ming, LCM
 static boolean display_backlight_on = FALSE;  // FIHTDC-Div2-SW2-BSP, Ming
-
 //Div2-SW2-BSP,JoeHsu,+++
-#ifdef LCDC_TRULY_WVGA_PT
 static int panel_type =	0;//0=Toshiba Panel,1=Truly Panel
 static int panel_read_proc(char *page, char **start, off_t off,
 				int count, int *eof, void *data);
-#endif // LCDC_TRULY_WVGA_PT
 //Div2-SW2-BSP,JoeHsu,---				
+
+/* SW5-1-MM-KW-Backlight_PWM-00+ { */
+/* M = 1, N = 150 */
+uint16 PWM[11] = { 0,  //Backlight off,  0%
+                   4,  //Min level,   0.03%,  10 cd/m^2
+                  19,  //            12.69%,  48 cd/m^2
+                  34,  //            22.69%,  86 cd/m^2
+                  49,  //            32.69%, 124 cd/m^2
+                  65,  //            43.33%, 162 cd/m^2
+                  81,  //            54.10%, 200 cd/m^2
+                  98,  //            65.38%, 238 cd/m^2
+                 115,  //            76.79%, 276 cd/m^2
+                 133,  //            83.78%, 314 cd/m^2
+                 150   //Max Level, 100.00%, 352 cd/m^2
+};
+/* SW5-1-MM-KW-Backlight_PWM-00- } */
 
 #ifndef CONFIG_SPI_QSD
 static void toshiba_spi_write_byte(char dc, uint8 data)
@@ -242,7 +260,6 @@ static int toshiba_spi_read_bytes(char cmd, uint32 *data, int num)
 }
 
 //Div2-SW2-BSP,JoeHsu ,+++
-#ifdef LCDC_TRULY_WVGA_PT
 
 static int truly_spi_write_cmd(unsigned int cmd)
 {
@@ -482,21 +499,30 @@ static int truly_spi_read_data(void)
    
 	gpio_set_value(spi_cs, 1);    
 
-  printk(KERN_INFO "truly_spi_read_data =%x\n", data);
+  //printk(KERN_INFO "truly_spi_read_data =%x\n", data);
 
 	return data;
 }
-#endif // LCDC_TRULY_WVGA_PT
 //Div2-SW2-BSP,JoeHsu ,---
+
 
 #ifndef CONFIG_SPI_QSD
 static void spi_pin_assign(void)
 {
 	/* Setting the Default GPIO's */
-	spi_sclk = *(lcdc_toshiba_pdata->gpio_num);
+	/* FIHTDC, Div2-SW2-BSP, Ming, SPI for PR1  */
+   	if (fih_get_product_phase()>=Product_PR2||(fih_get_product_id()!=Product_FB0 && fih_get_product_id()!=Product_FD1)) { 
+		spi_sclk = *(lcdc_toshiba_pdata->gpio_num);
 	spi_cs   = *(lcdc_toshiba_pdata->gpio_num + 1);
-	spi_mosi  = *(lcdc_toshiba_pdata->gpio_num + 2);
-	spi_miso  = *(lcdc_toshiba_pdata->gpio_num + 3);
+		spi_mosi  = *(lcdc_toshiba_pdata->gpio_num + 2);
+		spi_miso  = *(lcdc_toshiba_pdata->gpio_num + 3);
+    } else { // FB0_PR1 or FD1_PR1, different spi configuration
+        spi_sclk = *(lcdc_toshiba_pdata->gpio_num);
+    	spi_cs   = *(lcdc_toshiba_pdata->gpio_num + 1);
+	 spi_mosi  = *(lcdc_toshiba_pdata->gpio_num + 3);
+	 spi_miso  = *(lcdc_toshiba_pdata->gpio_num + 2);
+	}
+	/* FIHTDC, Div2-SW2-BSP, Ming, SPI for PR1  */
 }
 #endif
 
@@ -509,10 +535,21 @@ static void toshiba_disp_powerup(void)
 	}
 }
 
+/* FIHTDC-Div5-SW2-BSP, Chun {*/ 
+int disp_on_process=0;
+int alarm_flag=0;
+extern int suspend_resume_flag;
+extern int permit;
+/* } FIHTDC-Div5-SW2-BSP, Chun */ 
+
+
 static void toshiba_disp_on(void)
 {
 	uint32	data;
-
+	
+	if (permit==1)
+    	disp_on_process=1;
+    permit=1;	
 #ifndef CONFIG_SPI_QSD
 	gpio_set_value(spi_cs, 0);	/* low */
 	gpio_set_value(spi_sclk, 1);	/* high */
@@ -521,6 +558,7 @@ static void toshiba_disp_on(void)
 #endif
 
 	if (toshiba_state.disp_powered_up && !toshiba_state.display_on) {
+	    
 #if 1  
         // LT041MDM6x00 Timing sequense
 	    toshiba_spi_write(0, 0, 0);
@@ -544,7 +582,11 @@ static void toshiba_disp_on(void)
 		toshiba_spi_write(0xb4, 0x02, 1);
 
 		toshiba_spi_write(0xb5, 0x23, 1); 
-
+/* FIHTDC-SW5-MULTIMEDIA, Chance { */
+#ifdef CONFIG_FIH_PROJECT_SF4Y6
+                toshiba_spi_write(0xb5, 0x1C, 1);
+#endif
+/* } FIHTDC-SW5-MULTIMEDIA, Chance */
 		toshiba_spi_write(0xb6, 0x2e, 1);
 		
 		toshiba_spi_write(0xb7, 0x03, 1);
@@ -710,18 +752,33 @@ static void toshiba_disp_on(void)
 
 	data = 0;
 	toshiba_spi_read_bytes(0x04, &data, 3);
+	/* FIHTDC-Div5-SW2-BSP, Chun {*/ 
+	disp_on_process=0;
+	suspend_resume_flag=0;
+	alarm_flag=0;
+	/* } FIHTDC-Div5-SW2-BSP, Chun */ 
+
+//DIV5-MM-KW-pull down SPI pin for SF4Y6-00+ {
+#ifdef CONFIG_FIH_PROJECT_SF4Y6
+	gpio_set_value(spi_sclk, 0); /* clk low */
+	gpio_set_value(spi_cs, 0);	 /* cs low */
+	gpio_set_value(spi_mosi, 0); /* ds low */
+#endif
+// }DIV5-MM-KW-pull down SPI pin for SF4Y6-00-
+
 	printk(KERN_INFO "toshiba_disp_on: id=%x\n", data);
 
 }
 
 //Div2-SW2-BSP,JoeHsu ,+++
-#ifdef LCDC_TRULY_WVGA_PT
 //Initial  & 2.2 Gamma
 static void truly_disp_on(void)
 {
 	uint32	data;
 	
-
+	if (permit==1)
+    	disp_on_process=1;
+    permit=1;	
 #ifndef CONFIG_SPI_QSD
 	gpio_set_value(spi_cs, 1);	/* hi */
 	gpio_set_value(spi_sclk, 1);	/* high */
@@ -1137,16 +1194,27 @@ static void truly_disp_on(void)
 	}
 
 	data = 0;
-    truly_spi_write_cmd(0x0000);
-    truly_spi_write_data(0x00); 	
+  truly_spi_write_cmd(0x0000);
+  truly_spi_write_data(0x00); 	
 	truly_spi_read_cmd(0x0401);
 	data = truly_spi_read_data();	
+	/* FIHTDC-Div5-SW2-BSP, Chun {*/ 
+	disp_on_process=0;
+	suspend_resume_flag=0;
+	alarm_flag=0;
+	/* } FIHTDC-Div5-SW2-BSP, Chun */ 
 
+//DIV5-MM-KW-pull down SPI pin for SF4Y6-00+ {
+#ifdef CONFIG_FIH_PROJECT_SF4Y6
+	gpio_set_value(spi_sclk, 0); /* clk low */
+	gpio_set_value(spi_cs, 0);	 /* cs low */
+	gpio_set_value(spi_mosi, 0); /* ds low */
+#endif
+// }DIV5-MM-KW-pull down SPI pin for SF4Y6-00-
 
 	printk(KERN_INFO "truly_disp_on: id=%x\n", data);
 
 }
-#endif // LCDC_TRULY_WVGA_PT
 //Div2-SW2-BSP,JoeHsu ,---
 
 static int lcdc_toshiba_panel_on(struct platform_device *pdev)
@@ -1160,23 +1228,20 @@ static int lcdc_toshiba_panel_on(struct platform_device *pdev)
 		if (lcdc_toshiba_pdata->panel_config_gpio)
 			lcdc_toshiba_pdata->panel_config_gpio(1);
 		toshiba_disp_powerup();
-		
-#ifndef LCDC_TRULY_WVGA_PT
-		toshiba_disp_on();
-#else
-    //Div2-SW2-BSP,JoeHsu
+
+		//Div2-SW2-BSP,JoeHsu
   	if (panel_type == 1) {
-        //printk(KERN_INFO "Truly panel ...\n");
-        truly_disp_on();
-    }else {
-        //printk(KERN_INFO "Toshiba panel ...\n");
-        toshiba_disp_on();
-    }
-#endif // LCDC_TRULY_WVGA_PT		
+  		  //printk(KERN_INFO "Truly panel ...\n");
+  		  truly_disp_on();
+  	 }else {
+  	 	  //printk(KERN_INFO "Toshiba panel ...\n");
+		    toshiba_disp_on();
+		  }
 		toshiba_state.disp_initialized = TRUE;
 	}
 	return 0;
 }
+int panel_off_process=0;/* FIHTDC-Div5-SW2-BSP, Chun */ 
 
 static int lcdc_toshiba_panel_off(struct platform_device *pdev)
 {
@@ -1184,46 +1249,49 @@ static int lcdc_toshiba_panel_off(struct platform_device *pdev)
 		printk(KERN_INFO "[DISPLAY] %s: disp_initialized=%d, display_on=%d, disp_powered_up=%d.\n", 
                    __func__, (int)toshiba_state.disp_initialized, (int)toshiba_state.display_on, (int)toshiba_state.disp_powered_up);
     /* } FIHTDC-Div2-SW2-BSP, Ming, LCM */
-	
+      
+    panel_off_process=1;/* FIHTDC-Div5-SW2-BSP, Chun { */ 
+    
 	if (toshiba_state.disp_powered_up && toshiba_state.display_on) {
 		/* Main panel power off (Deep standby in) */
 
-#ifndef LCDC_TRULY_WVGA_PT
-		toshiba_spi_write(0x28, 0, 0);	/* display off */
-		mdelay(1);
-		toshiba_spi_write(0xb8, 0x8002, 2);	/* output control */
-		mdelay(1);
-		toshiba_spi_write(0x10, 0x00, 1);	/* sleep mode in */
-		mdelay(85);		/* wait 85 msec */
-		toshiba_spi_write(0xb0, 0x00, 1);	/* deep standby in */
-		mdelay(1);
-#else // LCDC_TRULY_WVGA_PT
     if (panel_type == 1) {
-        truly_spi_write(0x2800,0x00); //Display off
-        mdelay(1);
-        truly_spi_write(0x1000,0x00); //Sleep in
-        mdelay(120);
-        truly_spi_write(0x4F00,0x01); //Deep standby mode
-    	  mdelay(120); /* Div2-SW2-BSP,JOE HSU,wait 120 msec */
-    }else {
-        toshiba_spi_write(0x28, 0, 0);	/* display off */
-        mdelay(1);
-        toshiba_spi_write(0xb8, 0x8002, 2);	/* output control */
-        mdelay(1);
-        toshiba_spi_write(0x10, 0x00, 1);	/* sleep mode in */
-        mdelay(85);		/* wait 85 msec */
-        toshiba_spi_write(0xb0, 0x00, 1);	/* deep standby in */
-        mdelay(1);
-    }
-#endif // LCDC_TRULY_WVGA_PT
+    	  truly_spi_write(0x2800,0x00); //Display off
+    	  mdelay(1);
+    	  truly_spi_write(0x1000,0x00); //Sleep in
+    	  mdelay(120);
+    	  truly_spi_write(0x4F00,0x01); //Deep standby mode
+     }else {
+    		toshiba_spi_write(0x28, 0, 0);	/* display off */
+    		mdelay(1);
+    		toshiba_spi_write(0xb8, 0x8002, 2);	/* output control */
+    		mdelay(1);
+    		toshiba_spi_write(0x10, 0x00, 1);	/* sleep mode in */
+    		mdelay(85);		/* wait 85 msec */
+    		toshiba_spi_write(0xb0, 0x00, 1);	/* deep standby in */
+    		mdelay(1);
+    	}
+    	
 		if (lcdc_toshiba_pdata->panel_config_gpio)
 			lcdc_toshiba_pdata->panel_config_gpio(0);
 		toshiba_state.display_on = FALSE;
 		toshiba_state.disp_initialized = FALSE;
+
+	//DIV5-MM-KW-pull down SPI pin for SF4Y6-00+ {
+	#if defined(CONFIG_FIH_PROJECT_SF4Y6)
+		gpio_set_value(spi_sclk, 0); /* clk low */
+		gpio_set_value(spi_cs, 0);	 /* cs low */
+		gpio_set_value(spi_mosi, 0); /* ds low */
+	#endif
+	// }DIV5-MM-KW-pull down SPI pin for SF4Y6-00-
+
 	}
+	panel_off_process=0;/* } FIHTDC-Div5-SW2-BSP, Chun */ 
+	
 	return 0;
 }
 
+extern int bl_level_framework_store;/* FIHTDC-Div5-SW2-BSP, Chun */ 
 static void lcdc_toshiba_set_backlight(struct msm_fb_data_type *mfd)
 {
 	int bl_level;
@@ -1231,49 +1299,91 @@ static void lcdc_toshiba_set_backlight(struct msm_fb_data_type *mfd)
 	//int i = 0;
 
 	bl_level = mfd->bl_level;
+	bl_level_framework_store=bl_level;
 	printk(KERN_INFO "[DISPLAY] %s: level=%d\n", __func__, bl_level);
-	
+	/* FIHTDC-Div5-SW2-BSP, Chun {*/ 
+    if (panel_off_process==1 ||disp_on_process==1||suspend_resume_flag==1)
+    { 
+    	bl_level=0;
+    	alarm_flag=1;
+    }	
+    //printk(KERN_INFO "[DISPLAY] %s: After change,level=%d\n", __func__, bl_level);
+    //printk(KERN_INFO "[DISPLAY] %s: bl_level_framework_store=%d\n", __func__,bl_level_framework_store);
+	/* }FIHTDC-Div5-SW2-BSP, Chun */
+	 
 /* FIHTDC-Div2-SW2-BSP, Ming, Backlight { */
+	 if (fih_get_product_phase()>=Product_PR2||(fih_get_product_id()!=Product_FB0 && fih_get_product_id()!=Product_FD1)) { 
         ret = gpio_tlmm_config(GPIO_CFG(98, 2, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA), GPIO_CFG_ENABLE);
     	if (ret)
     		printk(KERN_INFO "[DISPLAY] %s: gpio_tlmm_config: 98 failed...\n", __func__);
+///        mdelay(5);	
         
 		if (bl_level == 0) {
-			writel(0x0, MSM_CLK_CTL_BASE + 0x5c);
-		    
+			/* SW5-1-MM-KW-Backlight_PWM-01+ { */
+			if ((fih_get_product_phase() > Product_PR2) && (fih_get_product_id() == Product_SF6)) {
+				// GP_MD_REG (CLK_MD)
+				writel( ((mfd->panel_info.bl_regs.gp_clk_m & 0x01ff) << 16) | 0xffff, MSM_CLK_CTL_BASE + 0x58);
+				// GP_NS_REG (CLK_NS)
+				writel( (~(mfd->panel_info.bl_regs.gp_clk_n - mfd->panel_info.bl_regs.gp_clk_m) << 16) | 0xb58, MSM_CLK_CTL_BASE + 0x5c);
+		    } else {
+				writel(0x0, MSM_CLK_CTL_BASE + 0x5c);
+			}
+			/* SW5-1-MM-KW-Backlight_PWM-01- } */
+
 		    if (display_backlight_on == TRUE) {
 		        clk_disable(gp_clk);	
 		        display_backlight_on = FALSE;
 		    }
-		} else {
-    	    if (display_backlight_on == FALSE) {   	    	    
-		       	clk_enable(gp_clk);			        	
-		       	display_backlight_on = TRUE;
-		    }
-			// M/N:D counter, M=1 for modulo-n counter
+		} else {		    
+            // M/N:D counter, M=1 for modulo-n counter
         	// TCXO(SYS_CLK)=19.2MHz, PreDivSel=Div-4, N=240, 20kHz=19.2MHz/4/240
     	    // D = duty_cycle x N, 2D = duty_cycle x 2N	
-			    
-			    // GP_MD_REG (CLK_MD)
-				writel((1U << 16) | (~(bl_level * 480 / 100) & 0xffff), MSM_CLK_CTL_BASE + 0x58);
-    		    // GP_NS_REG (CLK_NS)
-    		    writel((~(239)<< 16) | 0xb58, MSM_CLK_CTL_BASE + 0x5c);	
+    	    if (alarm_flag!=1) /* FIHTDC-Div5-SW2-BSP, Chun */ 
+    	    {	
+    	    	if (display_backlight_on == FALSE) {   	    	    
+		        	clk_enable(gp_clk);			        	
+		        	display_backlight_on = TRUE;
+		    	}
+				/* SW5-1-MM-KW-Backlight_PWM-00+ { */
+				if ((fih_get_product_phase() > Product_PR2) && (fih_get_product_id() == Product_SF6)) {
+					// M/N:D counter, M=1 for modulo-n counter
+					// TCXO(SYS_CLK)=19.2MHz, PreDivSel=Div-4, N=150, 32kHz=19.2MHz/4/150
+					// D = duty_cycle x N, 2D = duty_cycle x 2N
+					mfd->panel_info.bl_regs.gp_clk_d = PWM[bl_level];
+					// GP_MD_REG (CLK_MD)
+					writel( ((mfd->panel_info.bl_regs.gp_clk_m & 0x01ff) << 16) | (~(mfd->panel_info.bl_regs.gp_clk_d * 2) & 0xffff), MSM_CLK_CTL_BASE + 0x58);
+					// GP_NS_REG (CLK_NS)
+					writel( (~(mfd->panel_info.bl_regs.gp_clk_n - mfd->panel_info.bl_regs.gp_clk_m) << 16) | 0xb58, MSM_CLK_CTL_BASE + 0x5c);
+				} else {
+					writel((1U << 16) | (~(bl_level * 480 / 100) & 0xffff), MSM_CLK_CTL_BASE + 0x58);
+
+    		    	// GP_NS_REG (CLK_NS)
+    		    	writel((~(239)<< 16) | 0xb58, MSM_CLK_CTL_BASE + 0x5c);
+				}
+				/* SW5-1-MM-KW-Backlight_PWM-00- } */
+			}	
 		}
-		
-	//while (i++ < 3) {
+    } else { // FB0_PR1, different backlight gpio configuration
+     printk(KERN_INFO "[DISPLAY] %s: PR1, only backlight on/off.\n", __func__);
+        gpio_request(83, "lcm_pwm");
+         if (bl_level == 0)
+        	gpio_set_value(83, 0);
+        else
+        	gpio_set_value(83, 1); 
+    }
+	/*while (i++ < 3) {
 	//	ret = pmic_set_led_intensity(LED_LCD, bl_level);
-	//	if (ret == 0)
+    //if (ret == 0)
 	//		return;
 	//	msleep(10);
-	//}
-    //
-	//printk(KERN_WARNING "%s: can't set lcd backlight!\n",
-	//			__func__);
-	
+	}
+
+	printk(KERN_WARNING "%s: can't set lcd backlight!\n",
+				__func__);
+    */
 /* } FIHTDC-Div2-SW2-BSP, Ming, Backlight */ 
 }
 
-#ifdef LCDC_TRULY_WVGA_PT
 //Div2-SW2-BSP,JoeHsu ,+++
 static int panel_read_proc(char *page, char **start, off_t off,
 				 int count, int *eof, void *data)
@@ -1283,8 +1393,9 @@ static int panel_read_proc(char *page, char **start, off_t off,
 
 	if (panel_type == 0)
  	    strcpy(ver, "TOSHIBA");
-    else
+  else         	
 	    strcpy(ver, "TRULY");
+
 
 	len = snprintf(page, PAGE_SIZE, "%s\n",
 		ver);
@@ -1297,9 +1408,8 @@ static int panel_read_proc(char *page, char **start, off_t off,
 	return len;	
 }
 //Div2-SW2-BSP,JoeHsu ,---
-#endif // LCDC_TRULY_WVGA_PT
 
-static int __devinit toshiba_probe(struct platform_device *pdev)
+static int __init toshiba_probe(struct platform_device *pdev)
 {
 	if (pdev->id == 0) {
 		lcdc_toshiba_pdata = pdev->dev.platform_data;
@@ -1384,7 +1494,6 @@ static int __init lcdc_toshiba_panel_init(void)
 	pinfo = &toshiba_panel_data.panel_info;
 	pinfo->xres = 480;
 	pinfo->yres = 800;
-	MSM_FB_SINGLE_MODE_PANEL(pinfo);
 	pinfo->type = LCDC_PANEL;
 	pinfo->pdest = DISPLAY_1;
 	pinfo->wait_cycle = 0;
@@ -1392,8 +1501,18 @@ static int __init lcdc_toshiba_panel_init(void)
 	pinfo->fb_num = 2;
 	/* 30Mhz mdp_lcdc_pclk and mdp_lcdc_pad_pcl */
 	pinfo->clk_rate = 24576000; //30720000;  // FIHTDC-Div2-SW2-BSP, Ming, 25MHz
-	pinfo->bl_max = 100; //15; // FIHTDC-Div2-SW2-BSP, Ming, Backlight 
-	pinfo->bl_min = 1;
+	/* SW5-1-MM-KW-Backlight_PWM-00+ { */
+	if ((fih_get_product_phase() > Product_PR2) && (fih_get_product_id() == Product_SF6)) {
+		pinfo->bl_regs.bl_type = BL_TYPE_GP_CLK;
+		pinfo->bl_regs.gp_clk_m = 1;
+		pinfo->bl_regs.gp_clk_n = 150;
+		pinfo->bl_max = 10;
+		pinfo->bl_min = 1;
+	} else {
+		pinfo->bl_max = 100; //15; // FIHTDC-Div2-SW2-BSP, Ming, Backlight 
+		pinfo->bl_min = 1;
+	}
+	/* SW5-1-MM-KW-Backlight_PWM-00- } */
 	/*Div2-SW6-SC-Add_panel_size-00+{*/
 	pinfo->width = 53;  //53.28mm 
 	pinfo->height = 88; //88.80mm
@@ -1416,8 +1535,7 @@ static int __init lcdc_toshiba_panel_init(void)
 	pinfo->lcdc.v_pulse_width = 1;
 #endif
 
-#ifdef LCDC_TRULY_WVGA_PT
-    //Div2-SW2-BSP,JoeHsu
+		//Div2-SW2-BSP,JoeHsu
   	gpio_set_value(spi_cs, 1);	/* hi */
   	gpio_set_value(spi_sclk, 1);	/* high */
   	gpio_set_value(spi_mosi, 0);
@@ -1437,9 +1555,8 @@ static int __init lcdc_toshiba_panel_init(void)
       	pinfo->lcdc.v_pulse_width = 2;  // VSW  
     }
 
-    create_proc_read_entry ("panel_type", 0, NULL,panel_read_proc, NULL);
-#endif // LCDC_TRULY_WVGA_PT
-  
+  create_proc_read_entry ("panel_type", 0, NULL,panel_read_proc, NULL);
+
 	pinfo->lcdc.border_clr = 0;     /* blk */
 	pinfo->lcdc.underflow_clr = 0xff;       /* blue */
 	pinfo->lcdc.hsync_skew = 0;

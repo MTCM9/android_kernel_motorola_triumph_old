@@ -102,7 +102,7 @@ int mdp4_dsi_video_on(struct platform_device *pdev)
 		ptype = mdp4_overlay_format2type(mfd->fb_imgType);
 		if (ptype < 0)
 			printk(KERN_INFO "%s: format2type failed\n", __func__);
-		pipe = mdp4_overlay_pipe_alloc(ptype, MDP4_MIXER0, 0);
+		pipe = mdp4_overlay_pipe_alloc(ptype, FALSE);
 		if (pipe == NULL) {
 			printk(KERN_INFO "%s: pipe_alloc failed\n", __func__);
 			return -EBUSY;
@@ -111,7 +111,6 @@ int mdp4_dsi_video_on(struct platform_device *pdev)
 		pipe->mixer_stage  = MDP4_MIXER_STAGE_BASE;
 		pipe->mixer_num  = MDP4_MIXER0;
 		pipe->src_format = mfd->fb_imgType;
-		mdp4_overlay_panel_mode(pipe->mixer_num, MDP4_PANEL_DSI_VIDEO);
 		ret = mdp4_overlay_format2pipe(pipe);
 		if (ret < 0)
 			printk(KERN_INFO "%s: format2type failed\n", __func__);
@@ -123,10 +122,6 @@ int mdp4_dsi_video_on(struct platform_device *pdev)
 
 	/* MDP cmd block enable */
 	mdp_pipe_ctrl(MDP_CMD_BLOCK, MDP_BLOCK_POWER_ON, FALSE);
-	if (is_mdp4_hw_reset()) {
-		mdp4_hw_init();
-		outpdw(MDP_BASE + 0x0038, mdp4_display_intf);
-	}
 
 	pipe->src_height = fbi->var.yres;
 	pipe->src_width = fbi->var.xres;
@@ -215,8 +210,6 @@ int mdp4_dsi_video_on(struct platform_device *pdev)
 	MDP_OUTP(MDP_BASE + DSI_VIDEO_BASE + 0x2c, dsi_underflow_clr);
 	MDP_OUTP(MDP_BASE + DSI_VIDEO_BASE + 0x30, dsi_hsync_skew);
 	MDP_OUTP(MDP_BASE + DSI_VIDEO_BASE + 0x38, ctrl_polarity);
-	mdp4_overlay_reg_flush(pipe, 1);
-	mdp_histogram_ctrl(TRUE);
 
 	ret = panel_next_on(pdev);
 	if (ret == 0) {
@@ -240,17 +233,15 @@ int mdp4_dsi_video_off(struct platform_device *pdev)
 	/* MDP cmd block disable */
 	mdp_pipe_ctrl(MDP_CMD_BLOCK, MDP_BLOCK_POWER_OFF, FALSE);
 	mdp_pipe_ctrl(MDP_OVERLAY0_BLOCK, MDP_BLOCK_POWER_OFF, FALSE);
-	mdp_histogram_ctrl(FALSE);
+
 	ret = panel_next_off(pdev);
 
-#ifdef MIPI_DSI_RGB_UNSTAGE
 	/* delay to make sure the last frame finishes */
 	msleep(100);
 
-	/* dis-engage rgb0 from mixer0 */
+	/* dis-engage rgb1 from mixer1 */
 	if (dsi_pipe)
 		mdp4_mixer_stage_down(dsi_pipe);
-#endif
 
 	return ret;
 }
@@ -301,6 +292,6 @@ void mdp4_dsi_video_overlay(struct msm_fb_data_type *mfd)
 	mdp_disable_irq(MDP_OVERLAY0_TERM);
 
 	mdp4_stat.kickoff_dsi++;
-	mdp4_overlay_resource_release();
+
 	mutex_unlock(&mfd->dma->ov_mutex);
 }

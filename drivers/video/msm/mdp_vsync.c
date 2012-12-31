@@ -136,6 +136,7 @@ static void mdp_set_vsync(unsigned long data)
 	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)data;
 	struct msm_fb_panel_data *pdata = NULL;
 
+//printk(KERN_INFO "[MDP_VSYNC] mdp_set_vsync()\n");
 	pdata = (struct msm_fb_panel_data *)mfd->pdev->dev.platform_data;
 
 	vsync_mfd = mfd;
@@ -355,7 +356,6 @@ void mdp_config_vsync(struct msm_fb_data_type *mfd)
 		mfd->vsync_width_boundary = vmalloc(mfd->panel_info.xres * 4);
 #endif
 
-#ifdef CONFIG_FB_MSM_MDDI
 		mfd->channel_irq = 0;
 		if (mfd->panel_info.lcd.hw_vsync_mode) {
 			u32 vsync_gpio = mfd->vsync_gpio;
@@ -376,12 +376,6 @@ void mdp_config_vsync(struct msm_fb_data_type *mfd)
 			if (ret)
 				goto err_handle;
 
-			/*
-			 * if use_mdp_vsync, then no interrupt need since
-			 * mdp_vsync is feed directly to mdp to reset the
-			 * write pointer counter. therefore no irq_handler
-			 * need to reset write pointer counter.
-			 */
 			if (!mfd->use_mdp_vsync) {
 				mfd->channel_irq = MSM_GPIO_TO_INT(vsync_gpio);
 				if (request_irq
@@ -397,7 +391,6 @@ void mdp_config_vsync(struct msm_fb_data_type *mfd)
 				}
 			}
 		}
-#endif
 		mdp_hw_vsync_clk_enable(mfd);
 		mdp_set_vsync((unsigned long)mfd);
 	}

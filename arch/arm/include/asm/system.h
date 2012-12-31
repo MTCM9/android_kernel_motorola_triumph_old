@@ -60,8 +60,6 @@
 #include <linux/linkage.h>
 #include <linux/irqflags.h>
 
-#include <asm/outercache.h>
-
 #define __exception	__attribute__((section(".exception.text")))
 
 void cpu_idle_wait(void);

@@ -1,4 +1,4 @@
-/* Copyright (c) 2008-2011, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2008-2010, Code Aurora Forum. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -31,29 +31,26 @@
 #include <linux/delay.h>
 #include <linux/mutex.h>
 #include <linux/pm_runtime.h>
-#include <linux/regulator/consumer.h>
 
 #include <asm/system.h>
 #include <asm/mach-types.h>
 #include <linux/semaphore.h>
 #include <linux/uaccess.h>
-#include <mach/clk.h>
 #include "mdp.h"
 #include "msm_fb.h"
 #ifdef CONFIG_FB_MSM_MDP40
 #include "mdp4.h"
 #endif
 
-uint32 mdp4_extn_disp;
 static struct clk *mdp_clk;
 static struct clk *mdp_pclk;
-struct regulator *footswitch;
 
 struct completion mdp_ppp_comp;
 struct semaphore mdp_ppp_mutex;
 struct semaphore mdp_pipe_ctrl_mutex;
 
-unsigned long mdp_timer_duration = (HZ);   /* 1 second */
+unsigned long mdp_timer_duration = (HZ);   /* 1 sec */
+/* unsigned long mdp_mdp_timer_duration=0; */
 
 boolean mdp_ppp_waiting = FALSE;
 uint32 mdp_tv_underflow_cnt;
@@ -89,7 +86,6 @@ static struct delayed_work mdp_pipe_ctrl_worker;
 struct mdp_dma_data dma2_data;
 struct mdp_dma_data dma_s_data;
 struct mdp_dma_data dma_e_data;
-ulong mdp4_display_intf;
 #else
 static struct mdp_dma_data dma2_data;
 static struct mdp_dma_data dma_s_data;
@@ -171,7 +167,7 @@ static int mdp_lut_update_nonlcdc(struct fb_info *info, struct fb_cmap *cmap)
 
 	if (ret)
 		return ret;
-	dsb();
+
 	mutex_lock(&mdp_lut_push_sem);
 	mdp_lut_push = 1;
 	mdp_lut_push_i = mdp_lut_i;
@@ -203,14 +199,13 @@ static int mdp_lut_update_lcdc(struct fb_info *info, struct fb_cmap *cmap)
 
 static void mdp_lut_enable(void)
 {
-	mutex_lock(&mdp_lut_push_sem);
 	if (mdp_lut_push) {
+		mutex_lock(&mdp_lut_push_sem);
 		mdp_lut_push = 0;
-		dsb();
 		MDP_OUTP(MDP_BASE + 0x90070,
 				(mdp_lut_push_i << 10) | 0x17);
+		mutex_unlock(&mdp_lut_push_sem);
 	}
-	mutex_unlock(&mdp_lut_push_sem);
 }
 
 #define MDP_HIST_MAX_BIN 32
@@ -221,96 +216,10 @@ static __u32 mdp_hist_b[MDP_HIST_MAX_BIN];
 #ifdef CONFIG_FB_MSM_MDP40
 struct mdp_histogram mdp_hist;
 struct completion mdp_hist_comp;
-boolean mdp_is_hist_start = FALSE;
 #else
 static struct mdp_histogram mdp_hist;
 static struct completion mdp_hist_comp;
-static boolean mdp_is_hist_start = FALSE;
 #endif
-static DEFINE_MUTEX(mdp_hist_mutex);
-
-int mdp_histogram_ctrl(boolean en)
-{
-	unsigned long flag;
-	boolean hist_start;
-	spin_lock_irqsave(&mdp_spin_lock, flag);
-	hist_start = mdp_is_hist_start;
-	spin_unlock_irqrestore(&mdp_spin_lock, flag);
-
-	if (hist_start == TRUE) {
-		if (en == TRUE) {
-			mdp_enable_irq(MDP_HISTOGRAM_TERM);
-			mdp_hist.frame_cnt = 1;
-			mdp_pipe_ctrl(MDP_CMD_BLOCK, MDP_BLOCK_POWER_ON, FALSE);
-#ifdef CONFIG_FB_MSM_MDP40
-			MDP_OUTP(MDP_BASE + 0x95010, 1);
-			MDP_OUTP(MDP_BASE + 0x9501c, INTR_HIST_DONE);
-			MDP_OUTP(MDP_BASE + 0x95004, 1);
-			MDP_OUTP(MDP_BASE + 0x95000, 1);
-#else
-			MDP_OUTP(MDP_BASE + 0x94004, 1);
-			MDP_OUTP(MDP_BASE + 0x94000, 1);
-#endif
-			mdp_pipe_ctrl(MDP_CMD_BLOCK, MDP_BLOCK_POWER_OFF,
-					FALSE);
-		} else
-			mdp_disable_irq(MDP_HISTOGRAM_TERM);
-	}
-	return 0;
-}
-
-int mdp_start_histogram(struct fb_info *info)
-{
-	unsigned long flag;
-
-	int ret = 0;
-	mutex_lock(&mdp_hist_mutex);
-	if (mdp_is_hist_start == TRUE) {
-		printk(KERN_ERR "%s histogram already started\n", __func__);
-		ret = -EPERM;
-		goto mdp_hist_start_err;
-	}
-
-	spin_lock_irqsave(&mdp_spin_lock, flag);
-	mdp_is_hist_start = TRUE;
-	spin_unlock_irqrestore(&mdp_spin_lock, flag);
-	mdp_enable_irq(MDP_HISTOGRAM_TERM);
-	mdp_pipe_ctrl(MDP_CMD_BLOCK, MDP_BLOCK_POWER_ON, FALSE);
-#ifdef CONFIG_FB_MSM_MDP40
-	MDP_OUTP(MDP_BASE + 0x95004, 1);
-	MDP_OUTP(MDP_BASE + 0x95000, 1);
-#else
-	MDP_OUTP(MDP_BASE + 0x94004, 1);
-	MDP_OUTP(MDP_BASE + 0x94000, 1);
-#endif
-	mdp_pipe_ctrl(MDP_CMD_BLOCK, MDP_BLOCK_POWER_OFF, FALSE);
-
-mdp_hist_start_err:
-	mutex_unlock(&mdp_hist_mutex);
-	return ret;
-
-}
-int mdp_stop_histogram(struct fb_info *info)
-{
-	unsigned long flag;
-	int ret = 0;
-	mutex_lock(&mdp_hist_mutex);
-	if (!mdp_is_hist_start) {
-		printk(KERN_ERR "%s histogram already stopped\n", __func__);
-		ret = -EPERM;
-		goto mdp_hist_stop_err;
-	}
-	spin_lock_irqsave(&mdp_spin_lock, flag);
-	mdp_is_hist_start = FALSE;
-	spin_unlock_irqrestore(&mdp_spin_lock, flag);
-	/* disable the irq for histogram since we handled it
-	   when the control reaches here */
-	mdp_disable_irq(MDP_HISTOGRAM_TERM);
-
-mdp_hist_stop_err:
-	mutex_unlock(&mdp_hist_mutex);
-	return ret;
-}
 
 static int mdp_do_histogram(struct fb_info *info, struct mdp_histogram *hist)
 {
@@ -319,23 +228,31 @@ static int mdp_do_histogram(struct fb_info *info, struct mdp_histogram *hist)
 	if (!hist->frame_cnt || (hist->bin_cnt == 0) ||
 				 (hist->bin_cnt > MDP_HIST_MAX_BIN))
 		return -EINVAL;
-	mutex_lock(&mdp_hist_mutex);
-	if (!mdp_is_hist_start) {
-		printk(KERN_ERR "%s histogram not started\n", __func__);
-		mutex_unlock(&mdp_hist_mutex);
-		return -EPERM;
-	}
-	mutex_unlock(&mdp_hist_mutex);
 
 	INIT_COMPLETION(mdp_hist_comp);
 
 	mdp_hist.bin_cnt = hist->bin_cnt;
-	mdp_hist.frame_cnt = hist->frame_cnt;
 	mdp_hist.r = (hist->r) ? mdp_hist_r : 0;
 	mdp_hist.g = (hist->g) ? mdp_hist_g : 0;
 	mdp_hist.b = (hist->b) ? mdp_hist_b : 0;
 
+	mdp_enable_irq(MDP_HISTOGRAM_TERM);
+
+	mdp_pipe_ctrl(MDP_CMD_BLOCK, MDP_BLOCK_POWER_ON, FALSE);
+#ifdef CONFIG_FB_MSM_MDP40
+	MDP_OUTP(MDP_BASE + 0x95004, hist->frame_cnt);
+	MDP_OUTP(MDP_BASE + 0x95000, 1);
+#else
+	MDP_OUTP(MDP_BASE + 0x94004, hist->frame_cnt);
+	MDP_OUTP(MDP_BASE + 0x94000, 1);
+#endif
+	mdp_pipe_ctrl(MDP_CMD_BLOCK, MDP_BLOCK_POWER_OFF, FALSE);
+
 	wait_for_completion_killable(&mdp_hist_comp);
+
+	/* disable the irq for histogram since we handled it
+	   when the control reaches here */
+	mdp_disable_irq(MDP_HISTOGRAM_TERM);
 
 	if (hist->r) {
 		ret = copy_to_user(hist->r, mdp_hist.r, hist->bin_cnt*4);
@@ -394,8 +311,7 @@ void mdp_enable_irq(uint32 term)
 
 	spin_lock_irqsave(&mdp_lock, irq_flags);
 	if (mdp_irq_mask & term) {
-		printk(KERN_ERR "%s: MDP IRQ term-0x%x is already set, mask=%x irq=%d\n",
-				__func__, term, mdp_irq_mask, mdp_irq_enabled);
+		printk(KERN_ERR "MDP IRQ term-0x%x is already set\n", term);
 	} else {
 		mdp_irq_mask |= term;
 		if (mdp_irq_mask && !mdp_irq_enabled) {
@@ -415,8 +331,7 @@ void mdp_disable_irq(uint32 term)
 
 	spin_lock_irqsave(&mdp_lock, irq_flags);
 	if (!(mdp_irq_mask & term)) {
-		printk(KERN_ERR "%s: MDP IRQ term-0x%x is NOT set, mask=%x irq=%d\n",
-				__func__, term, mdp_irq_mask, mdp_irq_enabled);
+		printk(KERN_ERR "MDP IRQ term-0x%x is not set\n", term);
 	} else {
 		mdp_irq_mask &= ~term;
 		if (!mdp_irq_mask && mdp_irq_enabled) {
@@ -430,8 +345,7 @@ void mdp_disable_irq(uint32 term)
 void mdp_disable_irq_nosync(uint32 term)
 {
 	if (!(mdp_irq_mask & term)) {
-		printk(KERN_ERR "%s: MDP IRQ term-0x%x is NOT set, mask=%x irq=%d\n",
-				__func__, term, mdp_irq_mask, mdp_irq_enabled);
+		printk(KERN_ERR "MDP IRQ term-0x%x is not set\n", term);
 	} else {
 		mdp_irq_mask &= ~term;
 		if (!mdp_irq_mask && mdp_irq_enabled) {
@@ -519,7 +433,7 @@ void mdp_pipe_kickoff(uint32 term, struct msm_fb_data_type *mfd)
 	}
 #endif
 }
-static int mdp_clk_rate;
+
 static struct platform_device *pdev_list[MSM_FB_MAX_DEV_LIST];
 static int pdev_list_cnt;
 
@@ -561,10 +475,12 @@ void mdp_pipe_ctrl(MDP_BLOCK_TYPE block, MDP_BLOCK_POWER_STATE state,
 			* There shouldn't be multiple power-off request for
 			* other blocks
 			*/
+#ifndef CONFIG_FB_MSM_MDDI
 			if (block != MDP_MASTER_BLOCK) {
 				MSM_FB_INFO("mdp_block_power_cnt[block=%d] \
 				multiple power-off request\n", block);
 			}
+#endif
 			atomic_set(&mdp_block_power_cnt[block], 0);
 		}
 
@@ -585,10 +501,14 @@ void mdp_pipe_ctrl(MDP_BLOCK_TYPE block, MDP_BLOCK_POWER_STATE state,
 		}
 
 		if ((mdp_all_blocks_off) && (mdp_current_clk_on)) {
+//SW2-6-MM-JH-mdp_timer_duration-00+
+		  if (mdp_timer_duration > 0) {
 			/* send workqueue to turn off mdp power */
 			queue_delayed_work(mdp_pipe_ctrl_wq,
 					   &mdp_pipe_ctrl_worker,
 					   mdp_timer_duration);
+		  }
+//SW2-6-MM-JH-mdp_timer_duration-00-
 		}
 	} else {
 		down(&mdp_pipe_ctrl_mutex);
@@ -618,24 +538,16 @@ void mdp_pipe_ctrl(MDP_BLOCK_TYPE block, MDP_BLOCK_POWER_STATE state,
 		if ((mdp_all_blocks_off) && (mdp_current_clk_on)) {
 			if (block == MDP_MASTER_BLOCK) {
 				mdp_current_clk_on = FALSE;
-				dsb();
 				/* turn off MDP clks */
 				mdp_vsync_clk_disable();
 				for (i = 0; i < pdev_list_cnt; i++) {
 					pdata = (struct msm_fb_panel_data *)
 						pdev_list[i]->dev.platform_data;
-					if (pdata && pdata->clk_func)
-						pdata->clk_func(0);
+//					if (pdata && pdata->clk_func)
+//						pdata->clk_func(0);
 				}
 				if (mdp_clk != NULL) {
-					mdp_clk_rate = clk_get_rate(mdp_clk);
 					clk_disable(mdp_clk);
-					if (mdp_hw_revision <=
-						MDP4_REVISION_V2_1 &&
-						mdp_clk_rate > 122880000) {
-						clk_set_rate(mdp_clk,
-							 122880000);
-					}
 					MSM_FB_DEBUG("MDP CLK OFF\n");
 					printk(KERN_INFO "[DISPLAY] %s: MDP CLK OFF\n", __func__);
 				}
@@ -645,10 +557,14 @@ void mdp_pipe_ctrl(MDP_BLOCK_TYPE block, MDP_BLOCK_POWER_STATE state,
 					printk(KERN_INFO "[DISPLAY] %s: MDP PCLK OFF\n", __func__);
 				}
 			} else {
+//SW2-6-MM-JH-mdp_timer_duration-00+
+			  if (mdp_timer_duration > 0) {
 				/* send workqueue to turn off mdp power */
 				queue_delayed_work(mdp_pipe_ctrl_wq,
 						   &mdp_pipe_ctrl_worker,
 						   mdp_timer_duration);
+			  }
+//SW2-6-MM-JH-mdp_timer_duration-00-
 			}
 		} else if ((!mdp_all_blocks_off) && (!mdp_current_clk_on)) {
 			mdp_current_clk_on = TRUE;
@@ -656,16 +572,10 @@ void mdp_pipe_ctrl(MDP_BLOCK_TYPE block, MDP_BLOCK_POWER_STATE state,
 			for (i = 0; i < pdev_list_cnt; i++) {
 				pdata = (struct msm_fb_panel_data *)
 					pdev_list[i]->dev.platform_data;
-				if (pdata && pdata->clk_func)
-					pdata->clk_func(1);
+//				if (pdata && pdata->clk_func)
+//					pdata->clk_func(1);
 			}
 			if (mdp_clk != NULL) {
-				if (mdp_hw_revision <=
-					MDP4_REVISION_V2_1 &&
-					mdp_clk_rate > 122880000) {
-					clk_set_rate(mdp_clk,
-						 mdp_clk_rate);
-				}
 				clk_enable(mdp_clk);
 				MSM_FB_DEBUG("MDP CLK ON\n");
 				printk(KERN_INFO "[DISPLAY] %s: MDP CLK ON\n", __func__);
@@ -680,6 +590,23 @@ void mdp_pipe_ctrl(MDP_BLOCK_TYPE block, MDP_BLOCK_POWER_STATE state,
 		up(&mdp_pipe_ctrl_mutex);
 	}
 }
+
+//SW2-6-MM-JH-mdp_timer_duration-00+
+static ssize_t mdp_timer_duration_show(struct device *dev,
+        struct device_attribute *attr, char *buf)
+{
+    return sprintf(buf, "%lu\n", mdp_timer_duration);
+}
+
+static ssize_t mdp_timer_duration_store(struct device *dev,
+        struct device_attribute *attr, const char *buf, size_t size)
+{
+    sscanf(buf, "%lu", &mdp_timer_duration);
+    return size;
+}
+
+static DEVICE_ATTR(mdp_timer_duration, 0644, mdp_timer_duration_show, mdp_timer_duration_store);
+//SW2-6-MM-JH-mdp_timer_duration-00-
 
 #ifndef CONFIG_FB_MSM_MDP40
 irqreturn_t mdp_isr(int irq, void *ptr)
@@ -728,11 +655,6 @@ irqreturn_t mdp_isr(int irq, void *ptr)
 				memcpy(mdp_hist.b, MDP_BASE + 0x94300,
 						mdp_hist.bin_cnt*4);
 			complete(&mdp_hist_comp);
-			if (mdp_is_hist_start == TRUE) {
-				MDP_OUTP(MDP_BASE + 0x94004,
-						 mdp_hist.frame_cnt);
-				MDP_OUTP(MDP_BASE + 0x94000, 1);
-			}
 		}
 
 		/* LCDC UnderFlow */
@@ -743,11 +665,6 @@ irqreturn_t mdp_isr(int irq, void *ptr)
 			 to normal.*/
 			MDP_OUTP(MDP_BASE + 0x94010, 1);
 			MDP_OUTP(MDP_BASE + 0x9401c, 2);
-			if (mdp_is_hist_start == TRUE) {
-				MDP_OUTP(MDP_BASE + 0x94004,
-						 mdp_hist.frame_cnt);
-				MDP_OUTP(MDP_BASE + 0x94000, 1);
-			}
 		}
 		/* LCDC Frame Start */
 		if (mdp_interrupt & LCDC_FRAME_START) {
@@ -845,10 +762,8 @@ static void mdp_drv_init(void)
 	init_MUTEX(&mdp_pipe_ctrl_mutex);
 
 	dma2_data.busy = FALSE;
-	dma2_data.dmap_busy = FALSE;
 	dma2_data.waiting = FALSE;
 	init_completion(&dma2_data.comp);
-	init_completion(&dma2_data.dmap_comp);
 	init_MUTEX(&dma2_data.mutex);
 	mutex_init(&dma2_data.ov_mutex);
 
@@ -957,7 +872,6 @@ static struct platform_driver mdp_driver = {
 static int mdp_off(struct platform_device *pdev)
 {
 	int ret = 0;
-	mdp_histogram_ctrl(FALSE);
 
 	mdp_pipe_ctrl(MDP_CMD_BLOCK, MDP_BLOCK_POWER_ON, FALSE);
 	ret = panel_next_off(pdev);
@@ -969,15 +883,6 @@ static int mdp_off(struct platform_device *pdev)
 static int mdp_on(struct platform_device *pdev)
 {
 	int ret = 0;
-#ifdef CONFIG_FB_MSM_MDP40
-	mdp_pipe_ctrl(MDP_CMD_BLOCK, MDP_BLOCK_POWER_ON, FALSE);
-	if (is_mdp4_hw_reset()) {
-		mdp4_hw_init();
-		outpdw(MDP_BASE + 0x0038, mdp4_display_intf);
-	}
-	mdp_pipe_ctrl(MDP_CMD_BLOCK, MDP_BLOCK_POWER_OFF, FALSE);
-#endif
-	mdp_histogram_ctrl(TRUE);
 
 	mdp_pipe_ctrl(MDP_CMD_BLOCK, MDP_BLOCK_POWER_ON, FALSE);
 	ret = panel_next_on(pdev);
@@ -1026,110 +931,6 @@ void mdp_hw_version(void)
 				__func__, mdp_hw_revision);
 }
 
-#ifdef CONFIG_FB_MSM_MDP40
-static void configure_mdp_core_clk_table(uint32 min_clk_rate)
-{
-	uint8 count;
-	uint32 current_rate;
-	if (mdp_clk && mdp_pdata
-		&& mdp_pdata->mdp_core_clk_table) {
-		if (clk_set_min_rate(mdp_clk,
-				 min_clk_rate) < 0)
-			printk(KERN_ERR "%s: clk_set_min_rate failed\n",
-							 __func__);
-		else {
-			count = 0;
-			current_rate = clk_get_rate(mdp_clk);
-			while (count < mdp_pdata->num_mdp_clk) {
-				if (mdp_pdata->mdp_core_clk_table[count]
-						< current_rate) {
-					mdp_pdata->
-					mdp_core_clk_table[count] =
-							current_rate;
-				}
-				count++;
-			}
-		}
-	}
-}
-#endif
-
-#ifdef CONFIG_MSM_BUS_SCALING
-static uint32_t mdp_bus_scale_handle;
-int mdp_bus_scale_update_request(uint32_t index)
-{
-	if (!mdp_pdata && (!mdp_pdata->mdp_bus_scale_table
-	     || index > (mdp_pdata->mdp_bus_scale_table->num_usecases - 1))) {
-		printk(KERN_ERR "%s invalid table or index\n", __func__);
-		return -EINVAL;
-	}
-	if (mdp_bus_scale_handle < 1) {
-		printk(KERN_ERR "%s invalid bus handle\n", __func__);
-		return -EINVAL;
-	}
-	return msm_bus_scale_client_update_request(mdp_bus_scale_handle,
-							index);
-}
-#endif
-DEFINE_MUTEX(mdp_clk_lock);
-int mdp_set_core_clk(uint16 perf_level)
-{
-	int ret = -EINVAL;
-	if (mdp_clk && mdp_pdata
-		 && mdp_pdata->mdp_core_clk_table) {
-		if (perf_level > mdp_pdata->num_mdp_clk)
-			printk(KERN_ERR "%s invalid perf level\n", __func__);
-		else {
-			mutex_lock(&mdp_clk_lock);
-			if (mdp4_extn_disp)
-				perf_level = 1;
-			ret = clk_set_rate(mdp_clk,
-				mdp_pdata->
-				mdp_core_clk_table[mdp_pdata->num_mdp_clk
-						 - perf_level]);
-			mutex_unlock(&mdp_clk_lock);
-			if (ret) {
-				printk(KERN_ERR "%s unable to set mdp_core_clk rate\n",
-					__func__);
-			}
-		}
-	}
-	return ret;
-}
-
-unsigned long mdp_get_core_clk(void)
-{
-	unsigned long clk_rate = 0;
-	if (mdp_clk) {
-		mutex_lock(&mdp_clk_lock);
-		clk_rate = clk_get_rate(mdp_clk);
-		mutex_unlock(&mdp_clk_lock);
-	}
-
-	return clk_rate;
-}
-
-unsigned long mdp_perf_level2clk_rate(uint32 perf_level)
-{
-	unsigned long clk_rate = 0;
-
-	if (mdp_pdata && mdp_pdata->mdp_core_clk_table) {
-		if (perf_level > mdp_pdata->num_mdp_clk) {
-			printk(KERN_ERR "%s invalid perf level\n", __func__);
-			clk_rate = mdp_get_core_clk();
-		} else {
-			if (mdp4_extn_disp)
-				perf_level = 1;
-			clk_rate = mdp_pdata->
-				mdp_core_clk_table[mdp_pdata->num_mdp_clk
-					- perf_level];
-		}
-	} else
-		clk_rate = mdp_get_core_clk();
-
-	return clk_rate;
-}
-
 static int mdp_irq_clk_setup(void)
 {
 	int ret;
@@ -1144,12 +945,6 @@ static int mdp_irq_clk_setup(void)
 		return ret;
 	}
 	disable_irq(INT_MDP);
-
-	footswitch = regulator_get(NULL, "fs_mdp");
-	if (IS_ERR(footswitch))
-		footswitch = NULL;
-	else
-		regulator_enable(footswitch);
 
 	mdp_clk = clk_get(NULL, "mdp_clk");
 	if (IS_ERR(mdp_clk)) {
@@ -1167,11 +962,22 @@ static int mdp_irq_clk_setup(void)
 	/*
 	 * mdp_clk should greater than mdp_pclk always
 	 */
-	if (mdp_pdata && mdp_pdata->mdp_core_clk_rate) {
-		mutex_lock(&mdp_clk_lock);
-		clk_set_rate(mdp_clk, mdp_pdata->mdp_core_clk_rate);
-		mutex_unlock(&mdp_clk_lock);
-	}
+//SW2-6-MM-JH-MDP_CLK-00+
+#ifdef CONFIG_FB_MSM_LCDC
+    /* FIHTDC-Div2-SW2-BSP, Ming { */
+    /* If LCDC was already enabled in APPSBOOT, 
+        we should not set MDP_CLK again. 
+     */
+	if (!(inpdw(MDP_BASE + 0xC0000) & 0x01)) { /* lcdc not yet enabled */
+		if (mdp_pdata && mdp_pdata->mdp_core_clk_rate)
+	    	clk_set_rate(mdp_clk, mdp_pdata->mdp_core_clk_rate);
+    }
+    /* } FIHTDC-Div2-SW2-BSP, Ming */
+#else
+	if (mdp_pdata && mdp_pdata->mdp_core_clk_rate)
+    	clk_set_rate(mdp_clk, mdp_pdata->mdp_core_clk_rate);
+#endif // CONFIG_FB_MSM_LCDC
+//SW2-6-MM-JH-MDP_CLK-00-
 	printk(KERN_INFO "mdp_clk: mdp_clk=%d\n", (int)clk_get_rate(mdp_clk));
 #endif
 
@@ -1189,9 +995,6 @@ static int mdp_probe(struct platform_device *pdev)
 	int intf, if_no;
 #else
 	unsigned long flag;
-#endif
-#if defined(CONFIG_FB_MSM_MIPI_DSI) && defined(CONFIG_FB_MSM_MDP40)
-	struct mipi_panel_info *mipi;
 #endif
 
 	if ((pdev->id == 0) && (pdev->num_resources > 0)) {
@@ -1219,10 +1022,6 @@ static int mdp_probe(struct platform_device *pdev)
 		mdp4_fetch_cfg(clk_get_rate(mdp_clk));
 #else
 		mdp_hw_init();
-#endif
-
-#ifdef CONFIG_FB_MSM_OVERLAY
-		mdp_hw_cursor_init();
 #endif
 
 		mdp_resource_initialized = 1;
@@ -1319,13 +1118,16 @@ static int mdp_probe(struct platform_device *pdev)
 		mdp4_display_intf_sel(if_no, intf);
 #endif
 		mdp_config_vsync(mfd);
+
+//SW2-6-MM-JH-mdp_timer_duration-00+
+		/* File node: /sys/devices/platform/mdp.?/mdp_timer_duration */
+		rc = device_create_file(&pdev->dev, &dev_attr_mdp_timer_duration);
+//SW2-6-MM-JH-mdp_timer_duration-00-
+
 		break;
 
 #ifdef CONFIG_FB_MSM_MIPI_DSI
 	case MIPI_VIDEO_PANEL:
-#ifdef CONFIG_FB_MSM_MDP40
-		mdp_timer_duration = 0;
-#endif
 		pdata->on = mdp4_dsi_video_on;
 		pdata->off = mdp4_dsi_video_off;
 		mfd->hw_refresh = TRUE;
@@ -1341,12 +1143,10 @@ static int mdp_probe(struct platform_device *pdev)
 		break;
 
 	case MIPI_CMD_PANEL:
+		pdata->on = mdp4_dsi_cmd_on;
+		pdata->off = mdp4_dsi_cmd_off;
+		mfd->hw_refresh = TRUE;
 		mfd->dma_fnc = mdp4_dsi_cmd_overlay;
-#ifdef CONFIG_FB_MSM_MDP40
-		mdp_timer_duration = 0;
-		mipi = &mfd->panel_info.mipi;
-		configure_mdp_core_clk_table((mipi->dsi_pclk_rate) * 3 / 2);
-#endif
 		if (mfd->panel_info.pdest == DISPLAY_1) {
 			if_no = PRIMARY_INTF_SEL;
 			mfd->dma = &dma2_data;
@@ -1355,8 +1155,6 @@ static int mdp_probe(struct platform_device *pdev)
 			mfd->dma = &dma_s_data;
 		}
 		mdp4_display_intf_sel(if_no, DSI_CMD_INTF);
-
-		mdp_config_vsync(mfd);
 		break;
 #endif
 
@@ -1376,11 +1174,7 @@ static int mdp_probe(struct platform_device *pdev)
 		pdata->on = mdp_lcdc_on;
 		pdata->off = mdp_lcdc_off;
 		mfd->hw_refresh = TRUE;
-#if	defined(CONFIG_FB_MSM_OVERLAY) && defined(CONFIG_FB_MSM_MDP40)
-		mfd->cursor_update = mdp_hw_cursor_sync_update;
-#else
 		mfd->cursor_update = mdp_hw_cursor_update;
-#endif
 #ifndef CONFIG_FB_MSM_MDP22
 		mfd->lut_update = mdp_lut_update_lcdc;
 		mfd->do_histogram = mdp_do_histogram;
@@ -1392,8 +1186,6 @@ static int mdp_probe(struct platform_device *pdev)
 #endif
 
 #ifdef CONFIG_FB_MSM_MDP40
-		configure_mdp_core_clk_table((mfd->panel_info.clk_rate)
-								* 23 / 20);
 		if (mfd->panel.type == HDMI_PANEL) {
 			mfd->dma = &dma_e_data;
 			mdp4_display_intf_sel(EXTERNAL_INTF_SEL, LCDC_RGB_INTF);
@@ -1431,25 +1223,7 @@ static int mdp_probe(struct platform_device *pdev)
 		rc = -ENODEV;
 		goto mdp_probe_err;
 	}
-#ifdef CONFIG_FB_MSM_MDP40
-	mdp_pipe_ctrl(MDP_CMD_BLOCK, MDP_BLOCK_POWER_ON, FALSE);
-	mdp4_display_intf = inpdw(MDP_BASE + 0x0038);
-	mdp_pipe_ctrl(MDP_CMD_BLOCK, MDP_BLOCK_POWER_OFF, FALSE);
-#endif
 
-#ifdef CONFIG_MSM_BUS_SCALING
-	if (!mdp_bus_scale_handle && mdp_pdata &&
-		mdp_pdata->mdp_bus_scale_table) {
-		mdp_bus_scale_handle =
-			msm_bus_scale_register_client(
-					mdp_pdata->mdp_bus_scale_table);
-		if (!mdp_bus_scale_handle) {
-			printk(KERN_ERR "%s not able to get bus scale\n",
-				__func__);
-			return -ENOMEM;
-		}
-	}
-#endif
 	/* set driver data */
 	platform_set_drvdata(msm_fb_dev, mfd);
 
@@ -1461,17 +1235,12 @@ static int mdp_probe(struct platform_device *pdev)
 	pm_runtime_set_active(&pdev->dev);
 	pm_runtime_enable(&pdev->dev);
 
+
 	pdev_list[pdev_list_cnt++] = pdev;
-	mdp4_extn_disp = 0;
 	return 0;
 
       mdp_probe_err:
 	platform_device_put(msm_fb_dev);
-#ifdef CONFIG_MSM_BUS_SCALING
-	if (mdp_pdata && mdp_pdata->mdp_bus_scale_table &&
-		mdp_bus_scale_handle > 0)
-		msm_bus_scale_unregister_client(mdp_bus_scale_handle);
-#endif
 	return rc;
 }
 
@@ -1510,15 +1279,8 @@ static void mdp_early_suspend(struct early_suspend *h)
 
 static int mdp_remove(struct platform_device *pdev)
 {
-	if (footswitch != NULL)
-		regulator_put(footswitch);
 	iounmap(msm_mdp_base);
 	pm_runtime_disable(&pdev->dev);
-#ifdef CONFIG_MSM_BUS_SCALING
-	if (mdp_pdata && mdp_pdata->mdp_bus_scale_table &&
-		mdp_bus_scale_handle > 0)
-		msm_bus_scale_unregister_client(mdp_bus_scale_handle);
-#endif
 	return 0;
 }
 

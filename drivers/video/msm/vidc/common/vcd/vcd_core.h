@@ -1,4 +1,4 @@
-/* Copyright (c) 2010-2011, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2010, Code Aurora Forum. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -73,11 +73,6 @@ enum vcd_command {
 	VCD_CMD_CODE_FRAME,
 	VCD_CMD_OUTPUT_FLUSH,
 	VCD_CMD_CLIENT_CLOSE
-};
-
-enum vcd_core_type {
-    VCD_CORE_1080P,
-    VCD_CORE_720P
 };
 
 struct vcd_cmd_q_element {
@@ -171,7 +166,7 @@ struct vcd_clnt_status {
 	u32 int_field_cnt;
 	s64 first_ts;
 	s64 prev_ts;
-	u64 time_elapsed;
+	u32 time_elapsed;
 	struct vcd_frame_data eos_trig_ip_frm;
 	struct ddl_frame_data_tag eos_prev_op_frm;
 	u32 eos_prev_op_frm_status;
@@ -198,7 +193,6 @@ struct vcd_clnt_ctxt {
 
 	u32 live;
 	u32 decoding;
-	u32 bframe;
 
 	struct vcd_property_frame_rate frm_rate;
 	u32 frm_p_units;
